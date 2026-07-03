@@ -41,7 +41,10 @@ import { useFileBrowserExternalDrop } from './use-file-browser-external-drop';
 import { useFileBrowserVirtualLayout } from './use-file-browser-virtual-layout';
 import { useNavigatorImageThumbnails } from '@/modules/navigator/composables/use-navigator-image-thumbnails';
 import { useVideoThumbnails } from './use-video-thumbnails';
-import { getNavigatorSortSettingsForLayout } from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
+import {
+  getNavigatorGroupByForLayout,
+  getNavigatorSortSettingsForLayout,
+} from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
 
 function createNavigatorSortSettingsComputed(
   getNavigator: () => UserSettingsNavigator,
@@ -252,6 +255,7 @@ function setupExternalDataSource(options: UseFileBrowserOptions): DataSource {
 
 export function useFileBrowser(options: UseFileBrowserOptions) {
   const isExternalMode = !!options.externalEntries;
+  const userSettingsStore = useUserSettingsStore();
   const quickViewStore = useQuickViewStore();
   const internalDropHandler = useFileBrowserInternalDropHandler();
 
@@ -291,6 +295,14 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
   const virtualLayout = useFileBrowserVirtualLayout({
     entries: visualEntries,
     layout: options.layout,
+    groupBy: () => getNavigatorGroupByForLayout(
+      userSettingsStore.userSettings.navigator,
+      options.layout(),
+    ),
+    sortDirection: () => getNavigatorSortSettingsForLayout(
+      userSettingsStore.userSettings.navigator,
+      options.layout(),
+    ).direction,
     entryDescription: options.entryDescription,
   });
   const linkMetadata = useFileBrowserLinkMetadata({

@@ -5,6 +5,7 @@
 export const BUILTIN_NAVIGATOR_ICON_THEME_IDS = {
   default: 'builtin:default',
   system: 'builtin:system',
+  papirus: 'builtin:papirus',
 } as const;
 
 export type BuiltinNavigatorIconThemeId = typeof BUILTIN_NAVIGATOR_ICON_THEME_IDS[keyof typeof BUILTIN_NAVIGATOR_ICON_THEME_IDS];
@@ -61,7 +62,11 @@ export function parseNavigatorIconThemeId(value: string | null | undefined): Par
     return null;
   }
 
-  if (value === BUILTIN_NAVIGATOR_ICON_THEME_IDS.default || value === BUILTIN_NAVIGATOR_ICON_THEME_IDS.system) {
+  if (
+    value === BUILTIN_NAVIGATOR_ICON_THEME_IDS.default
+    || value === BUILTIN_NAVIGATOR_ICON_THEME_IDS.system
+    || value === BUILTIN_NAVIGATOR_ICON_THEME_IDS.papirus
+  ) {
     return {
       kind: 'builtin',
       themeId: value,

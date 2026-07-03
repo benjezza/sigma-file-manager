@@ -3,6 +3,7 @@
 // Copyright © 2021 - present Aleksey Hoffman. All rights reserved.
 
 import type {
+  ListGroupBy,
   ListSortColumn,
   ListSortDirection,
   UserSettingsNavigator,
@@ -45,6 +46,8 @@ export type NavigatorSortSettings = {
   column: ListSortColumn | null;
   direction: ListSortDirection;
 };
+
+export type NavigatorGroupBySettingKey = 'navigator.listGroupBy' | 'navigator.gridGroupBy';
 
 export function isListSortColumn(value: string): value is ListSortColumn {
   return FILE_BROWSER_SORT_COLUMNS.includes(value as ListSortColumn);
@@ -109,6 +112,17 @@ export function getNavigatorSortSettingKeys(layout: NavigatorSortLayout): Naviga
 
 export function getNextNavigatorSortDirection(direction: ListSortDirection): ListSortDirection {
   return direction === 'asc' ? 'desc' : 'asc';
+}
+
+export function getNavigatorGroupByForLayout(
+  navigator: UserSettingsNavigator,
+  layout: NavigatorSortLayout,
+): ListGroupBy {
+  return layout === 'grid' ? navigator.gridGroupBy : navigator.listGroupBy;
+}
+
+export function getNavigatorGroupBySettingKey(layout: NavigatorSortLayout): NavigatorGroupBySettingKey {
+  return layout === 'grid' ? 'navigator.gridGroupBy' : 'navigator.listGroupBy';
 }
 
 export function getNavigatorSortColumnChangeUpdates(

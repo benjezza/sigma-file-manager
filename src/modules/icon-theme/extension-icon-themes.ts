@@ -183,6 +183,11 @@ export function getBuiltinNavigatorIconThemeOptions(
       label: translate('system'),
       source: 'builtin',
     },
+    {
+      id: BUILTIN_NAVIGATOR_ICON_THEME_IDS.papirus,
+      label: 'Papirus',
+      source: 'builtin',
+    },
   ];
 }
 

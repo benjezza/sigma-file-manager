@@ -7,6 +7,8 @@ import {
   getFileBrowserListColumnLabelKey,
   getNavigatorSortColumnChangeUpdates,
   getNavigatorSortSettingsForLayout,
+  getNavigatorGroupByForLayout,
+  getNavigatorGroupBySettingKey,
   getNavigatorSortSettingKeys,
   getNextNavigatorSortDirection,
   getResolvedNavigatorSortColumn,
@@ -59,8 +61,10 @@ function createNavigatorSettings(overrides: Partial<UserSettingsNavigator> = {})
     listColumnOrder: ['items', 'size', 'modified', 'created', 'tags', 'kind', 'links', 'linkStatus'],
     listSortColumn: null,
     listSortDirection: 'asc',
+    listGroupBy: 'none',
     gridSortColumn: 'name',
     gridSortDirection: 'asc',
+    gridGroupBy: 'kind',
     ...overrides,
   };
 }
@@ -113,6 +117,18 @@ describe('file browser sort columns', () => {
       column: 'navigator.listSortColumn',
       direction: 'navigator.listSortDirection',
     });
+  });
+
+  it('returns layout-specific group-by settings', () => {
+    const navigator = createNavigatorSettings({
+      listGroupBy: 'name',
+      gridGroupBy: 'modified',
+    });
+
+    expect(getNavigatorGroupByForLayout(navigator, 'list')).toBe('name');
+    expect(getNavigatorGroupByForLayout(navigator, 'grid')).toBe('modified');
+    expect(getNavigatorGroupBySettingKey('list')).toBe('navigator.listGroupBy');
+    expect(getNavigatorGroupBySettingKey('grid')).toBe('navigator.gridGroupBy');
   });
 
   it('resets direction to asc when the sort column changes', () => {

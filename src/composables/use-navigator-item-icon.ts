@@ -15,6 +15,7 @@ import {
   parseNavigatorIconThemeId,
 } from '@/types/icon-theme';
 import { loadInstalledIconTheme } from '@/modules/icon-theme/extension-icon-themes';
+import { getBuiltinLoadedIconTheme } from '@/modules/icon-theme/builtin-icon-themes';
 import { resolveLoadedIconThemeIcon } from '@/modules/icon-theme/resolver';
 import { isVirtualLocationPath } from '@/utils/virtual-locations';
 import type { DriveEntryMetadata } from '@/types/drive-info';
@@ -123,11 +124,17 @@ export function useNavigatorItemIcon(params: NavigatorItemIconParams) {
   });
 
   const extensionThemeIconSrc = computed(() => {
-    if (parsedTheme.value?.kind !== 'extension' || !loadedExtensionTheme.value) {
+    const resolvedTheme = parsedTheme.value?.kind === 'extension'
+      ? loadedExtensionTheme.value
+      : parsedTheme.value?.kind === 'builtin'
+        ? getBuiltinLoadedIconTheme(parsedTheme.value.themeId)
+        : null;
+
+    if (!resolvedTheme) {
       return null;
     }
 
-    return resolveLoadedIconThemeIcon(loadedExtensionTheme.value, {
+    return resolveLoadedIconThemeIcon(resolvedTheme, {
       name: name.value,
       parentName: parentName.value,
       extension: extension.value,

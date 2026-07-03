@@ -350,7 +350,19 @@
       "systemIconsFiles": "文件",
       "sortBy": "排序依据",
       "sortAscending": "升序",
-      "sortDescending": "降序"
+      "sortDescending": "降序",
+      "sortDirection": "Direction",
+      "groupBy": "Group by",
+      "none": "None",
+      "groupByModified": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "earlierThisWeek": "Earlier this week",
+        "lastWeek": "Last week",
+        "lastMonth": "Last month",
+        "earlierThisYear": "Earlier this year",
+        "older": "Older"
+      }
     },
     "tabs": {
       "lastTabCloseBehavior": {

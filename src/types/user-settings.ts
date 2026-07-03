@@ -294,6 +294,7 @@ export type ListColumnOrder = ListReorderableColumnId[];
 export type ListSortColumn = 'name' | 'kind' | 'links' | 'items' | 'size' | 'modified' | 'created' | 'linkStatus' | 'tags';
 
 export type ListSortDirection = 'asc' | 'desc';
+export type ListGroupBy = 'none' | 'name' | 'modified' | 'kind';
 
 export type LastTabCloseBehavior = 'createDefaultTab' | 'closeWindow' | 'navigateToHomePage';
 
@@ -315,8 +316,10 @@ export type UserSettingsNavigator = {
   listColumnOrder: ListColumnOrder;
   listSortColumn: ListSortColumn | null;
   listSortDirection: ListSortDirection;
+  listGroupBy: ListGroupBy;
   gridSortColumn: ListSortColumn | null;
   gridSortDirection: ListSortDirection;
+  gridGroupBy: ListGroupBy;
 };
 
 export type UserSettingsNavigatorInfoPanel = {

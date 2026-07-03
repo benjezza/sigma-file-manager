@@ -7,6 +7,7 @@ import {
 } from 'vitest';
 import {
   clearInstalledIconThemeCache,
+  getBuiltinNavigatorIconThemeOptions,
   getExtensionNavigatorIconThemeOptions,
   loadInstalledIconTheme,
   resolveThemeRelativePath,
@@ -86,6 +87,12 @@ describe('extension icon theme asset path resolution', () => {
 
     expect(options).toHaveLength(1);
     expect(options[0].label).toBe('Example Dark');
+  });
+
+  it('includes the Papirus builtin option', () => {
+    const options = getBuiltinNavigatorIconThemeOptions(key => key);
+
+    expect(options.some(option => option.id === 'builtin:papirus' && option.label === 'Papirus')).toBe(true);
   });
 
   it('reloads icon themes after clearing the cache', async () => {

@@ -41,6 +41,8 @@ describe('createFileBrowserVirtualRows', () => {
     const rows = createFileBrowserVirtualRows({
       entries,
       layout: 'list',
+      groupBy: 'none',
+      sortDirection: 'asc',
       viewportWidth: 500,
       entryDescription: entry => (entry.name === 'second' ? 'Description' : undefined),
     });
@@ -84,6 +86,8 @@ describe('createFileBrowserVirtualRows', () => {
     const rows = createFileBrowserVirtualRows({
       entries,
       layout: 'grid',
+      groupBy: 'kind',
+      sortDirection: 'asc',
       viewportWidth: 500,
     });
 
@@ -132,6 +136,8 @@ describe('getFileBrowserGridNavigationEntry', () => {
     const rows = createFileBrowserVirtualRows({
       entries,
       layout: 'grid',
+      groupBy: 'kind',
+      sortDirection: 'asc',
       viewportWidth: 500,
     });
 

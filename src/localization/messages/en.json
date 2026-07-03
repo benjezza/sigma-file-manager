@@ -378,8 +378,20 @@
       "systemIconsDirectories": "Directories",
       "systemIconsFiles": "Files",
       "sortBy": "Sort by",
+      "sortDirection": "Direction",
+      "groupBy": "Group by",
+      "none": "None",
       "sortAscending": "Ascending",
-      "sortDescending": "Descending"
+      "sortDescending": "Descending",
+      "groupByModified": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "earlierThisWeek": "Earlier this week",
+        "lastWeek": "Last week",
+        "lastMonth": "Last month",
+        "earlierThisYear": "Earlier this year",
+        "older": "Older"
+      }
     },
     "tabs": {
       "lastTabCloseBehavior": {

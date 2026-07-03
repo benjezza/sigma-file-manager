@@ -26,7 +26,10 @@ import {
   type FileBrowserVisibleOptionalListColumn,
 } from './composables/use-file-browser-visible-list-columns';
 import FileBrowserListViewColumnCell from './file-browser-list-view-column-cell.vue';
-import type { FileBrowserListVirtualRow } from './composables/use-file-browser-virtual-layout';
+import type {
+  FileBrowserListGroupVirtualRow,
+  FileBrowserListVirtualRow,
+} from './composables/use-file-browser-virtual-layout';
 import type { ItemTag } from '@/types/user-stats';
 import {
   getDirEntryKindKey,
@@ -413,6 +416,30 @@ const visibleRows = computed<FileBrowserListDisplayRow[]>(() => {
     .filter((row): row is FileBrowserListVirtualRow => row.type === 'list-entry')
     .map(createDisplayRow);
 });
+
+const visibleListGroupRows = computed(() => {
+  return ctx.visibleVirtualRows.value.filter(
+    (row): row is FileBrowserListGroupVirtualRow => row.type === 'list-group',
+  );
+});
+
+const visibleRowsWithGroups = computed<Array<FileBrowserListDisplayRow | FileBrowserListGroupVirtualRow>>(() => {
+  const groupsByKey = new Map(visibleListGroupRows.value.map(row => [row.key, row]));
+
+  return ctx.visibleVirtualRows.value
+    .map((row) => {
+      if (row.type === 'list-entry') {
+        return createDisplayRow(row);
+      }
+
+      if (row.type === 'list-group') {
+        return groupsByKey.get(row.key) ?? row;
+      }
+
+      return null;
+    })
+    .filter((row): row is FileBrowserListDisplayRow | FileBrowserListGroupVirtualRow => row !== null);
+});
 </script>
 
 <template>
@@ -440,80 +467,91 @@ const visibleRows = computed<FileBrowserListDisplayRow[]>(() => {
         class="file-browser-list-view__virtual-window"
         :style="ctx.virtualWindowStyle.value"
       >
-        <div
-          v-for="row in visibleRows"
+        <template
+          v-for="row in visibleRowsWithGroups"
           :key="row.key"
-          v-memo="[row.memoKey]"
-          role="button"
-          tabindex="0"
-          class="file-browser-list-view__entry"
-          :class="{
-            'file-browser-list-view__entry--dir': row.entry.is_dir,
-            'file-browser-list-view__entry--file': row.entry.is_file,
-            'file-browser-list-view__entry--hidden': row.entry.is_hidden,
-          }"
-          :style="row.entryStyle"
-          :data-entry-path="row.entry.path"
-          :data-selected="row.isSelected || undefined"
-          :data-in-clipboard="row.isInClipboard || undefined"
-          :data-clipboard-type="row.clipboardType"
-          :data-link-status="row.entry.link_status || undefined"
-          :data-drop-target="row.entry.is_dir || undefined"
-          @mousedown="ctx.onEntryMouseDown(row.entry, $event)"
-          @mouseup="ctx.onEntryMouseUp(row.entry, $event)"
-          @focus="ctx.handleEntryFocus(row.entry, $event)"
-          @contextmenu="ctx.handleEntryContextMenu(row.entry)"
-          @keydown="handleEntryKeydown($event, row.entry)"
         >
-          <div class="file-browser-list-view__entry-name">
-            <FileBrowserEntryIcon
-              :entry="row.entry"
-              :size="18"
-              class="file-browser-list-view__entry-icon"
-              :class="{ 'file-browser-list-view__entry-icon--folder': row.entry.is_dir }"
-            />
-            <div class="file-browser-list-view__entry-name-content">
-              <div class="file-browser-list-view__entry-name-row">
-                <span class="file-browser-list-view__entry-text">{{ row.entry.name }}</span>
-                <span
-                  v-if="columnVisibility.linkTarget && row.entry.link_target"
-                  class="file-browser-list-view__entry-link-target"
-                >
-                  <LinkIcon
-                    :size="11"
-                    class="file-browser-list-view__entry-link-target-icon"
-                  />
-                  <span
-                    v-if="row.entry.link_type"
-                    class="file-browser-list-view__entry-link-target-type"
-                  >
-                    {{ row.linkTargetKindLabel }}:
-                  </span>
-                  <span class="file-browser-list-view__entry-link-target-text">
-                    {{ row.entry.link_target }}
-                  </span>
-                </span>
-              </div>
-              <span
-                v-if="row.entryDescription"
-                class="file-browser-list-view__entry-description"
-              >{{ row.entryDescription }}</span>
-            </div>
+          <div
+            v-if="row.type === 'list-group'"
+            class="file-browser-list-view__group-row"
+            :style="{ height: `${row.size}px` }"
+          >
+            <span class="file-browser-list-view__group-row-label">{{ row.groupLabel }}</span>
+            <span class="file-browser-list-view__group-row-count">{{ row.count }}</span>
           </div>
-          <FileBrowserListViewColumnCell
-            v-for="column in visibleOptionalListColumns"
-            :key="column.id"
-            :column-id="getOptionalColumnId(column)"
-            :row="row"
-            :available-tags="availableTags"
-            @toggle-tag="handleToggleEntryTag"
-            @create-tag="handleCreateEntryTag"
-            @rename-tag="renameTag"
-            @update-tag-color="updateTagColor"
-            @tags-open-change="handleEntryTagsOpenChange"
-            @open-tag-selector="openEntryTagSelector"
-          />
-        </div>
+          <div
+            v-else
+            role="button"
+            tabindex="0"
+            class="file-browser-list-view__entry"
+            :class="{
+              'file-browser-list-view__entry--dir': row.entry.is_dir,
+              'file-browser-list-view__entry--file': row.entry.is_file,
+              'file-browser-list-view__entry--hidden': row.entry.is_hidden,
+            }"
+            :style="row.entryStyle"
+            :data-entry-path="row.entry.path"
+            :data-selected="row.isSelected || undefined"
+            :data-in-clipboard="row.isInClipboard || undefined"
+            :data-clipboard-type="row.clipboardType"
+            :data-link-status="row.entry.link_status || undefined"
+            :data-drop-target="row.entry.is_dir || undefined"
+            @mousedown="ctx.onEntryMouseDown(row.entry, $event)"
+            @mouseup="ctx.onEntryMouseUp(row.entry, $event)"
+            @focus="ctx.handleEntryFocus(row.entry, $event)"
+            @contextmenu="ctx.handleEntryContextMenu(row.entry)"
+            @keydown="handleEntryKeydown($event, row.entry)"
+          >
+            <div class="file-browser-list-view__entry-name">
+              <FileBrowserEntryIcon
+                :entry="row.entry"
+                :size="18"
+                class="file-browser-list-view__entry-icon"
+                :class="{ 'file-browser-list-view__entry-icon--folder': row.entry.is_dir }"
+              />
+              <div class="file-browser-list-view__entry-name-content">
+                <div class="file-browser-list-view__entry-name-row">
+                  <span class="file-browser-list-view__entry-text">{{ row.entry.name }}</span>
+                  <span
+                    v-if="columnVisibility.linkTarget && row.entry.link_target"
+                    class="file-browser-list-view__entry-link-target"
+                  >
+                    <LinkIcon
+                      :size="11"
+                      class="file-browser-list-view__entry-link-target-icon"
+                    />
+                    <span
+                      v-if="row.entry.link_type"
+                      class="file-browser-list-view__entry-link-target-type"
+                    >
+                      {{ row.linkTargetKindLabel }}:
+                    </span>
+                    <span class="file-browser-list-view__entry-link-target-text">
+                      {{ row.entry.link_target }}
+                    </span>
+                  </span>
+                </div>
+                <span
+                  v-if="row.entryDescription"
+                  class="file-browser-list-view__entry-description"
+                >{{ row.entryDescription }}</span>
+              </div>
+            </div>
+            <FileBrowserListViewColumnCell
+              v-for="column in visibleOptionalListColumns"
+              :key="column.id"
+              :column-id="getOptionalColumnId(column)"
+              :row="row"
+              :available-tags="availableTags"
+              @toggle-tag="handleToggleEntryTag"
+              @create-tag="handleCreateEntryTag"
+              @rename-tag="renameTag"
+              @update-tag-color="updateTagColor"
+              @tags-open-change="handleEntryTagsOpenChange"
+              @open-tag-selector="openEntryTagSelector"
+            />
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -580,6 +618,33 @@ const visibleRows = computed<FileBrowserListDisplayRow[]>(() => {
   scroll-margin-top: var(--file-browser-list-header-height);
   text-align: start;
   user-select: none;
+}
+
+.file-browser-list-view__group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px var(--file-browser-list-row-padding-x) 6px;
+  border-bottom: 1px solid hsl(var(--border) / 40%);
+  background: hsl(var(--background-3));
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.file-browser-list-view__group-row-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-browser-list-view__group-row-count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: hsl(var(--secondary));
+  font-size: 11px;
+  text-transform: none;
 }
 
 .file-browser-list-view__entry:focus-visible {

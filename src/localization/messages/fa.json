@@ -346,7 +346,19 @@
       "systemIconsFiles": "فایل‌ها",
       "sortBy": "مرتب‌سازی بر اساس",
       "sortAscending": "صعودی",
-      "sortDescending": "نزولی"
+      "sortDescending": "نزولی",
+      "sortDirection": "Direction",
+      "groupBy": "Group by",
+      "none": "None",
+      "groupByModified": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "earlierThisWeek": "Earlier this week",
+        "lastWeek": "Last week",
+        "lastMonth": "Last month",
+        "earlierThisYear": "Earlier this year",
+        "older": "Older"
+      }
     },
     "tabs": {
       "lastTabCloseBehavior": {

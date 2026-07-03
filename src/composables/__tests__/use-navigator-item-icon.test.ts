@@ -87,6 +87,29 @@ describe('useNavigatorItemIcon', () => {
     fileScope.stop();
   });
 
+  it('resolves bundled Papirus icons for builtin papirus theme', async () => {
+    userSettingsStoreMock.userSettings.navigator.fileIconTheme = BUILTIN_NAVIGATOR_ICON_THEME_IDS.papirus;
+
+    const { useNavigatorItemIcon } = await import('@/composables/use-navigator-item-icon');
+    const fileScope = effectScope();
+    const fileResult = fileScope.run(() => useNavigatorItemIcon({
+      path: ref('C:/Projects/app.ts'),
+      name: ref('app.ts'),
+      isDir: ref(false),
+      extension: ref('ts'),
+      size: ref(32),
+    }));
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(
+      fileResult?.iconSrc.value?.startsWith('data:image/svg+xml,')
+      || fileResult?.iconSrc.value?.includes('/assets/'),
+    ).toBe(true);
+
+    fileScope.stop();
+  });
+
   it('uses the default fallback when icon theme resolution is disabled', async () => {
     userSettingsStoreMock.userSettings.navigator.fileIconTheme = BUILTIN_NAVIGATOR_ICON_THEME_IDS.system;
 

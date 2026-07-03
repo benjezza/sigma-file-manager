@@ -4,25 +4,28 @@ Copyright © 2021 - present Aleksey Hoffman. All rights reserved.
 -->
 
 <script setup lang="ts">
+import type { DirEntry } from '@/types/dir-entry';
 import {
   FolderIcon,
   FileIcon,
   FileImageIcon,
   FileVideoIcon,
 } from '@lucide/vue';
-import { useI18n } from 'vue-i18n';
 import { computed } from 'vue';
 import { useFileBrowserContext } from './composables/use-file-browser-context';
+import {
+  isFileBrowserImageEntry,
+  isFileBrowserVideoEntry,
+} from './file-browser-entry-groups';
 import type {
+  FileBrowserGridEntryVariant,
   FileBrowserGridItemsVirtualRow,
-  FileBrowserGridSectionKey,
   FileBrowserGridSectionVirtualRow,
 } from './composables/use-file-browser-virtual-layout';
 import FileBrowserGridSectionBar from './file-browser-grid-section-bar.vue';
 import FileBrowserGridCard from './file-browser-grid-card.vue';
 
 const ctx = useFileBrowserContext();
-const { t } = useI18n();
 const visibleRows = computed(() => {
   return ctx.visibleVirtualRows.value.filter((row): row is FileBrowserGridSectionVirtualRow | FileBrowserGridItemsVirtualRow => {
     return row.type === 'grid-section' || row.type === 'grid-items';
@@ -37,19 +40,6 @@ function handleGridContextMenu(event: MouseEvent) {
   ctx.handleBackgroundContextMenu();
 }
 
-function getSectionLabel(sectionKey: FileBrowserGridSectionKey): string {
-  switch (sectionKey) {
-    case 'dirs':
-      return t('fileBrowser.folders');
-    case 'images':
-      return t('fileBrowser.images');
-    case 'videos':
-      return t('fileBrowser.videos');
-    case 'others':
-      return t('fileBrowser.otherFiles');
-  }
-}
-
 function getGridRowStyle(row: FileBrowserGridItemsVirtualRow): Record<string, string> {
   return {
     height: `${row.size}px`,
@@ -57,8 +47,24 @@ function getGridRowStyle(row: FileBrowserGridItemsVirtualRow): Record<string, st
   };
 }
 
+function getEntryVariant(entry: DirEntry): FileBrowserGridEntryVariant {
+  if (entry.is_dir) {
+    return 'dir';
+  }
+
+  if (isFileBrowserImageEntry(entry)) {
+    return 'image';
+  }
+
+  if (isFileBrowserVideoEntry(entry)) {
+    return 'video';
+  }
+
+  return 'other';
+}
+
 function shouldShowInlineSectionBar(row: FileBrowserGridSectionVirtualRow): boolean {
-  return row.sectionKey !== ctx.activeGridSectionRow.value?.sectionKey;
+  return row.sectionId !== ctx.activeGridSectionRow.value?.sectionId;
 }
 
 function getSectionRowStyle(row: FileBrowserGridSectionVirtualRow): Record<string, string> {
@@ -89,20 +95,20 @@ function getSectionRowStyle(row: FileBrowserGridSectionVirtualRow): Record<strin
       >
         <div class="file-browser-grid-view__sticky-section-content">
           <FileBrowserGridSectionBar
-            :label="getSectionLabel(ctx.activeGridSectionRow.value.sectionKey)"
+            :label="ctx.activeGridSectionRow.value.label"
             :count="ctx.activeGridSectionRow.value.count"
           >
             <template #icon>
               <FolderIcon
-                v-if="ctx.activeGridSectionRow.value.sectionKey === 'dirs'"
+                v-if="ctx.activeGridSectionRow.value.variant === 'dir'"
                 :size="14"
               />
               <FileImageIcon
-                v-else-if="ctx.activeGridSectionRow.value.sectionKey === 'images'"
+                v-else-if="ctx.activeGridSectionRow.value.variant === 'image'"
                 :size="14"
               />
               <FileVideoIcon
-                v-else-if="ctx.activeGridSectionRow.value.sectionKey === 'videos'"
+                v-else-if="ctx.activeGridSectionRow.value.variant === 'video'"
                 :size="14"
               />
               <FileIcon
@@ -129,20 +135,20 @@ function getSectionRowStyle(row: FileBrowserGridSectionVirtualRow): Record<strin
           >
             <FileBrowserGridSectionBar
               v-if="shouldShowInlineSectionBar(row)"
-              :label="getSectionLabel(row.sectionKey)"
+              :label="row.label"
               :count="row.count"
             >
               <template #icon>
                 <FolderIcon
-                  v-if="row.sectionKey === 'dirs'"
+                  v-if="row.variant === 'dir'"
                   :size="14"
                 />
                 <FileImageIcon
-                  v-else-if="row.sectionKey === 'images'"
+                  v-else-if="row.variant === 'image'"
                   :size="14"
                 />
                 <FileVideoIcon
-                  v-else-if="row.sectionKey === 'videos'"
+                  v-else-if="row.variant === 'video'"
                   :size="14"
                 />
                 <FileIcon
@@ -161,7 +167,7 @@ function getSectionRowStyle(row: FileBrowserGridSectionVirtualRow): Record<strin
               v-for="entry in row.entries"
               :key="entry.path"
               :entry="entry"
-              :variant="row.variant"
+              :variant="getEntryVariant(entry)"
             />
           </div>
         </template>
