@@ -1608,6 +1608,41 @@ export const useExtensionsStore = defineStore('extensions', () => {
     return brokenExtensionIds.value.has(extensionId);
   }
 
+  async function discoverInstalledExtensionsFromDisk(): Promise<void> {
+    try {
+      const diskExtensions = await invoke<Array<{ id: string }>>('get_installed_extensions');
+
+      for (const diskExtension of diskExtensions) {
+        if (storageStore.extensionsData.installedExtensions[diskExtension.id]) {
+          continue;
+        }
+
+        try {
+          const manifestJson = await invokeAsExtension<string>(diskExtension.id, 'read_extension_manifest', {
+            extensionId: diskExtension.id,
+          });
+          const parsedManifest = JSON.parse(manifestJson) as unknown;
+          assertValidManifestData(parsedManifest);
+          const manifest = parsedManifest as ExtensionManifest;
+
+          if (manifest.id !== diskExtension.id) {
+            console.warn(`Skipping extension import for "${diskExtension.id}" due to manifest id mismatch ("${manifest.id}")`);
+            continue;
+          }
+
+          await storageStore.addInstalledExtension(diskExtension.id, manifest.version, manifest);
+        }
+        catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.warn(`Failed to import installed extension ${diskExtension.id} from disk: ${message}`);
+        }
+      }
+    }
+    catch (error) {
+      console.error('Failed to discover installed extensions from disk:', error);
+    }
+  }
+
   async function reconcileInstalledExtensions(): Promise<void> {
     try {
       const diskExtensions = await invoke<Array<{ id: string }>>('get_installed_extensions');
@@ -1804,6 +1839,7 @@ export const useExtensionsStore = defineStore('extensions', () => {
     if (isInitialized.value) return;
 
     await storageStore.init();
+    await discoverInstalledExtensionsFromDisk();
     await reconcileInstalledExtensions();
     await cleanupOrphanedIncompleteExtensionInstalls();
 
