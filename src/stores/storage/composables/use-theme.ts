@@ -5,7 +5,7 @@
 import {
   ref, computed, type Ref, type ComputedRef, watchEffect,
 } from 'vue';
-import type { Theme } from '@/types/user-settings';
+import type { BuiltinThemeId, Theme } from '@/types/user-settings';
 import { findThemeOption, parseThemeId } from '@/modules/themes/registry';
 import { useExtensionsStorageStore } from '@/stores/storage/extensions';
 
@@ -22,6 +22,12 @@ type ViewTransitionDocument = Document & {
 };
 
 const THEME_TRANSITION_DURATION_MS = 500;
+const BUILTIN_DARK_VARIANT_CLASSES = [
+  'dark-accent',
+  'dark-orange',
+  'dark-violet',
+  'dark-cyan',
+] as const;
 let activeViewTransition: ReturnType<NonNullable<ViewTransitionDocument['startViewTransition']>> | null = null;
 let activeViewTransitionAnimation: Animation | null = null;
 let activeViewTransitionId = 0;
@@ -54,13 +60,49 @@ export function useTheme(
     appliedThemeVariables.clear();
   }
 
+  function clearBuiltinThemeVariantClasses() {
+    if (typeof document === 'undefined' || !document.documentElement) {
+      return;
+    }
+
+    for (const className of BUILTIN_DARK_VARIANT_CLASSES) {
+      document.documentElement.classList.remove(className);
+    }
+  }
+
   function applyBaseTheme(theme: 'light' | 'dark') {
     currentTheme.value = theme;
     document.documentElement.classList.toggle('dark', currentTheme.value === 'dark');
+    clearBuiltinThemeVariantClasses();
   }
 
-  function resolveBuiltinTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' {
-    return theme === 'system' ? getSystemPreference() : theme;
+  function resolveBuiltinTheme(theme: BuiltinThemeId): 'light' | 'dark' {
+    if (theme === 'light') {
+      return 'light';
+    }
+
+    if (theme === 'system') {
+      return getSystemPreference();
+    }
+
+    return 'dark';
+  }
+
+  function applyBuiltinThemeVariant(theme: BuiltinThemeId) {
+    clearBuiltinThemeVariantClasses();
+    const variantClassName = theme === 'dark-accent'
+      ? 'dark-accent'
+      : theme === 'dark-orange'
+        ? 'dark-orange'
+        : theme === 'dark-violet'
+          ? 'dark-violet'
+          : theme === 'dark-cyan'
+            ? 'dark-cyan'
+            : null;
+
+    if (variantClassName) {
+      document.documentElement.classList.add(variantClassName);
+    }
   }
 
   function getTransitionOrigin(): ThemeTransitionOrigin {
@@ -166,6 +208,11 @@ export function useTheme(
         : 'dark';
 
       applyBaseTheme(resolvedTheme);
+
+      if (parsedTheme?.source === 'builtin') {
+        applyBuiltinThemeVariant(parsedTheme.builtinThemeId);
+      }
+
       return;
     }
 

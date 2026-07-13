@@ -34,7 +34,10 @@ import {
   isVirtualLocationPath,
   resolveDirectoryContents,
 } from '@/utils/virtual-locations';
-import { shouldIncludeItemCountsForSort } from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
+import {
+  getNavigatorSortSettingsForLayout,
+  shouldIncludeItemCountsForSort,
+} from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
 
 interface DirChangePayload {
   watchedPath: string;
@@ -118,11 +121,11 @@ export function useFileBrowserNavigation(
     includeItemCounts: false,
   };
 
-  function createReadDirOptions(): ReadDirOptions {
+  function createReadDirOptions(path = currentPath.value): ReadDirOptions {
     return {
       includeShortcutTargets: false,
       includeHardLinkCounts: false,
-      includeItemCounts: shouldIncludeItemCountsForSort(userSettingsStore.userSettings.navigator),
+      includeItemCounts: shouldIncludeItemCountsForSort(userSettingsStore.userSettings.navigator, path),
     };
   }
 
@@ -245,7 +248,7 @@ export function useFileBrowserNavigation(
     isRefreshing.value = true;
 
     try {
-      const result = await loadDirectoryContents(currentPath.value, createReadDirOptions());
+      const result = await loadDirectoryContents(currentPath.value, createReadDirOptions(currentPath.value));
 
       dirContents.value = result;
       invalidateDirectoryLinkMetadata(result);
@@ -346,7 +349,7 @@ export function useFileBrowserNavigation(
     }
 
     try {
-      const result = await loadDirectoryContents(path, createReadDirOptions());
+      const result = await loadDirectoryContents(path, createReadDirOptions(path));
 
       dirContents.value = result;
 
@@ -561,8 +564,16 @@ export function useFileBrowserNavigation(
 
   watch(
     () => [
-      userSettingsStore.userSettings.navigator.listSortColumn,
-      userSettingsStore.userSettings.navigator.gridSortColumn,
+      getNavigatorSortSettingsForLayout(
+        userSettingsStore.userSettings.navigator,
+        'list',
+        currentPath.value,
+      ).column,
+      getNavigatorSortSettingsForLayout(
+        userSettingsStore.userSettings.navigator,
+        'grid',
+        currentPath.value,
+      ).column,
     ] as const,
     ([listSortColumn, gridSortColumn], [previousListSortColumn, previousGridSortColumn]) => {
       if (!currentPath.value || !dirContents.value) {

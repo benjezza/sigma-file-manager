@@ -21,8 +21,10 @@ import {
 } from '@lucide/vue';
 import type { ListSortColumn } from '@/types/user-settings';
 import {
+  getNavigatorSortSettingsForLayout,
   getNavigatorSortSettingKeys,
   getNextNavigatorSortDirection,
+  getUpdatedNavigatorPathViewPreferences,
 } from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -48,8 +50,13 @@ let headerResizeObserver: ResizeObserver | null = null;
 
 const columnVisibility = computed(() => userSettingsStore.userSettings.navigator.listColumnVisibility);
 const listColumnFillWidth = computed(() => userSettingsStore.userSettings.navigator.listColumnFillWidth);
-const listSortColumn = computed(() => userSettingsStore.userSettings.navigator.listSortColumn);
-const listSortDirection = computed(() => userSettingsStore.userSettings.navigator.listSortDirection);
+const listSortSettings = computed(() => getNavigatorSortSettingsForLayout(
+  userSettingsStore.userSettings.navigator,
+  'list',
+  ctx.currentPath.value,
+));
+const listSortColumn = computed(() => listSortSettings.value.column);
+const listSortDirection = computed(() => listSortSettings.value.direction);
 const showLinkColumnPerformanceWarning = computed(() => ctx.directoryEntryCount.value >= LINK_COLUMN_WARNING_MIN_ITEMS);
 const showCheckedLinkColumnPerformanceWarning = computed(() => {
   const visibility = columnVisibility.value;
@@ -59,6 +66,24 @@ const showCheckedLinkColumnPerformanceWarning = computed(() => {
 });
 
 function handleColumnHeaderClick(column: ListSortColumn) {
+  const nextPreferences = getUpdatedNavigatorPathViewPreferences(
+    userSettingsStore.userSettings.navigator,
+    ctx.currentPath.value,
+    listSortColumn.value === column
+      ? {
+          listSortDirection: getNextNavigatorSortDirection(listSortDirection.value),
+        }
+      : {
+          listSortColumn: column,
+          listSortDirection: 'asc',
+        },
+  );
+
+  if (nextPreferences) {
+    userSettingsStore.set('navigator.pathViewPreferences', nextPreferences);
+    return;
+  }
+
   const settingKeys = getNavigatorSortSettingKeys('list');
 
   if (listSortColumn.value === column) {

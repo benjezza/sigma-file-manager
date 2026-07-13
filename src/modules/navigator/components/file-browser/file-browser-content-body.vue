@@ -67,6 +67,7 @@ const { t } = useI18n();
             class="file-browser__entries-container"
             data-e2e-root="file-browser-entries"
             @contextmenu.self="ctx.handleBackgroundContextMenu"
+            @mousedown.capture="ctx.onEntriesContainerMouseDown"
           >
             <FileBrowserGridView
               v-if="props.layout === 'grid'"
@@ -74,6 +75,11 @@ const { t } = useI18n();
             <FileBrowserListView
               v-else
               :track-relative-time="props.trackRelativeTime"
+            />
+            <div
+              v-if="ctx.isMarqueeSelecting.value"
+              class="file-browser__selection-marquee"
+              :style="ctx.marqueeSelectionStyle.value"
             />
           </div>
         </ContextMenuTrigger>
@@ -104,10 +110,20 @@ const { t } = useI18n();
 }
 
 .file-browser__entries-container {
+  position: relative;
   display: flex;
   min-height: 0;
   flex: 1;
   flex-direction: column;
+}
+
+.file-browser__selection-marquee {
+  position: absolute;
+  z-index: 30;
+  border: 1px solid hsl(var(--primary) / 65%);
+  border-radius: 4px;
+  background-color: hsl(var(--primary) / 15%);
+  pointer-events: none;
 }
 
 .file-browser__content-body > :deep(.file-browser-loading) {

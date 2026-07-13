@@ -24,11 +24,13 @@ import {
   getNavigatorSortColumnChangeUpdates,
   getNavigatorSortSettingsForLayout,
   getResolvedNavigatorSortColumn,
+  getUpdatedNavigatorPathViewPreferences,
   isListSortColumn,
 } from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
 
 const props = defineProps<{
   sortLayout: 'list' | 'grid';
+  currentPath?: string;
 }>();
 
 const { t } = useI18n();
@@ -49,19 +51,59 @@ const SORT_DIRECTIONS: readonly ListSortDirection[] = ['asc', 'desc'];
 const sortSettings = computed(() => getNavigatorSortSettingsForLayout(
   userSettingsStore.userSettings.navigator,
   props.sortLayout,
+  props.currentPath,
 ));
 const activeSortColumn = computed(() => getResolvedNavigatorSortColumn(
   userSettingsStore.userSettings.navigator,
   props.sortLayout,
+  props.currentPath,
 ));
 const activeSortDirection = computed(() => sortSettings.value.direction);
 const activeGroupBy = computed(() => getNavigatorGroupByForLayout(
   userSettingsStore.userSettings.navigator,
   props.sortLayout,
+  props.currentPath,
 ));
+
+function updateCurrentPathPreferences(update: {
+  listSortColumn?: ListSortColumn | null;
+  listSortDirection?: ListSortDirection;
+  listGroupBy?: ListGroupBy;
+  gridSortColumn?: ListSortColumn | null;
+  gridSortDirection?: ListSortDirection;
+  gridGroupBy?: ListGroupBy;
+}): boolean {
+  const nextPreferences = getUpdatedNavigatorPathViewPreferences(
+    userSettingsStore.userSettings.navigator,
+    props.currentPath,
+    update,
+  );
+
+  if (!nextPreferences) {
+    return false;
+  }
+
+  userSettingsStore.set('navigator.pathViewPreferences', nextPreferences);
+  return true;
+}
 
 function handleSortColumnChange(value: unknown) {
   if (typeof value !== 'string' || !isListSortColumn(value) || !EXPLORER_SORT_COLUMNS.includes(value)) {
+    return;
+  }
+
+  const currentColumn = sortSettings.value.column;
+  const didSetPathPreference = props.sortLayout === 'grid'
+    ? updateCurrentPathPreferences({
+        gridSortColumn: value,
+        ...(currentColumn !== value ? { gridSortDirection: 'asc' } : {}),
+      })
+    : updateCurrentPathPreferences({
+        listSortColumn: value,
+        ...(currentColumn !== value ? { listSortDirection: 'asc' } : {}),
+      });
+
+  if (didSetPathPreference) {
     return;
   }
 
@@ -81,14 +123,30 @@ function handleSortDirectionChange(value: unknown) {
     return;
   }
 
-  const directionKey = props.sortLayout === 'grid'
-    ? 'navigator.gridSortDirection'
-    : 'navigator.listSortDirection';
-  userSettingsStore.set(directionKey, value);
+  const didSetPathPreference = props.sortLayout === 'grid'
+    ? updateCurrentPathPreferences({ gridSortDirection: value })
+    : updateCurrentPathPreferences({ listSortDirection: value });
+
+  if (didSetPathPreference) {
+    return;
+  }
+
+  userSettingsStore.set(
+    props.sortLayout === 'grid' ? 'navigator.gridSortDirection' : 'navigator.listSortDirection',
+    value,
+  );
 }
 
 function handleGroupByChange(value: unknown) {
   if (value !== 'none' && value !== 'name' && value !== 'modified' && value !== 'kind') {
+    return;
+  }
+
+  const didSetPathPreference = props.sortLayout === 'grid'
+    ? updateCurrentPathPreferences({ gridGroupBy: value })
+    : updateCurrentPathPreferences({ listGroupBy: value });
+
+  if (didSetPathPreference) {
     return;
   }
 

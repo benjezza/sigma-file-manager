@@ -625,9 +625,9 @@ const visibleRowsWithGroups = computed<Array<FileBrowserListDisplayRow | FileBro
   align-items: center;
   justify-content: space-between;
   padding: 8px var(--file-browser-list-row-padding-x) 6px;
-  border-bottom: 1px solid hsl(var(--border) / 40%);
-  background: hsl(var(--background-3));
-  color: hsl(var(--muted-foreground));
+  border-bottom: 1px solid var(--file-browser-group-border-color);
+  background: var(--file-browser-group-background);
+  color: var(--file-browser-group-foreground);
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
@@ -642,7 +642,8 @@ const visibleRowsWithGroups = computed<Array<FileBrowserListDisplayRow | FileBro
 .file-browser-list-view__group-row-count {
   padding: 1px 8px;
   border-radius: 999px;
-  background: hsl(var(--secondary));
+  background: var(--file-browser-group-count-background);
+  color: var(--file-browser-group-count-foreground);
   font-size: 11px;
   text-transform: none;
 }

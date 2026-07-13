@@ -224,7 +224,7 @@ export type LocalizationLanguage = {
   isRtl: boolean;
 };
 
-export type BuiltinThemeId = 'light' | 'dark' | 'system';
+export type BuiltinThemeId = 'light' | 'dark' | 'dark-accent' | 'dark-orange' | 'dark-violet' | 'dark-cyan' | 'system';
 export type Theme = BuiltinThemeId | `extension:${string}:${string}`;
 export type NavigatorIconTheme = string;
 
@@ -296,6 +296,23 @@ export type ListSortColumn = 'name' | 'kind' | 'links' | 'items' | 'size' | 'mod
 export type ListSortDirection = 'asc' | 'desc';
 export type ListGroupBy = 'none' | 'name' | 'modified' | 'kind';
 
+export type NavigatorLayoutType = {
+  title: 'compactListLayout' | 'listLayout' | 'gridLayout';
+  name: 'compact-list' | 'list' | 'grid';
+};
+
+export type NavigatorPathViewPreference = {
+  layoutType?: NavigatorLayoutType;
+  listSortColumn?: ListSortColumn | null;
+  listSortDirection?: ListSortDirection;
+  listGroupBy?: ListGroupBy;
+  gridSortColumn?: ListSortColumn | null;
+  gridSortDirection?: ListSortDirection;
+  gridGroupBy?: ListGroupBy;
+};
+
+export type NavigatorPathViewPreferences = Record<string, NavigatorPathViewPreference>;
+
 export type LastTabCloseBehavior = 'createDefaultTab' | 'closeWindow' | 'navigateToHomePage';
 
 export type SplitViewMode = 'split' | 'linked';
@@ -304,6 +321,7 @@ export type UserSettingsNavigator = {
   lastTabCloseBehavior: LastTabCloseBehavior;
   boldActiveTabTitle: boolean;
   layout: NavigatorLayout;
+  pathViewPreferences: NavigatorPathViewPreferences;
   infoPanel: UserSettingsNavigatorInfoPanel;
   showHiddenFiles: boolean;
   splitViewMode: SplitViewMode;
@@ -331,10 +349,7 @@ export type UserSettingsNavigatorInfoPanel = {
 };
 
 export type NavigatorLayout = {
-  type: {
-    title: 'compactListLayout' | 'listLayout' | 'gridLayout';
-    name: 'compact-list' | 'list' | 'grid';
-  };
+  type: NavigatorLayoutType;
   dirItemOptions: {
     title: {
       height: number;

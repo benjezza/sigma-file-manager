@@ -52,6 +52,7 @@ import {
   getLinkedPaneNavigationTarget,
   queueLinkedPaneNavigation,
 } from '@/modules/navigator/utils/linked-split-sync';
+import { getNavigatorLayoutForPath } from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
 import { getPathDisplayName } from '@/utils/normalize-path';
 
 type FileBrowserInstance = InstanceType<typeof FileBrowser> & {
@@ -235,11 +236,6 @@ watch(() => workspacesStore.currentTabGroup, (newGroup, oldGroup) => {
   }
 });
 
-const currentLayout = computed(() => {
-  const layoutName = userSettingsStore.userSettings.navigator.layout.type.name;
-  return layoutName === 'compact-list' ? 'list' : layoutName;
-});
-
 const infoPanelEntry = computed(() => {
   if (selectedEntries.value.length > 0) {
     return selectedEntries.value[selectedEntries.value.length - 1];
@@ -255,8 +251,17 @@ const isSplitView = computed(() => {
 const trackNavigatorRelativeTime = computed(() => !globalSearchStore.isOpen);
 
 const currentActivePath = computed(() => {
-  return currentDirEntry.value?.path;
+  return getActiveCurrentPath();
 });
+
+function getLayoutForPath(path: string | null | undefined): 'list' | 'grid' {
+  return getNavigatorLayoutForPath(
+    userSettingsStore.userSettings.navigator,
+    path,
+  );
+}
+
+const currentLayout = computed(() => getLayoutForPath(currentActivePath.value));
 
 const wasSplitViewBeforeSearch = ref(false);
 
@@ -1008,6 +1013,7 @@ onUnmounted(() => {
     :is-split-view="isSplitView"
     :show-info-panel="showInfoPanel"
     :is-global-search-open="globalSearchStore.isOpen"
+    :current-path="currentActivePath"
     @toggle-split-view="handleToggleSplitView"
     @toggle-info-panel="handleToggleInfoPanel"
     @set-split-view-mode="handleSetSplitViewMode"
@@ -1070,7 +1076,7 @@ onUnmounted(() => {
                         :ref="(el) => setPaneRef(el as FileBrowserInstance, tab.id)"
                         :tab="tab"
                         :pane-index="index"
-                        :layout="currentLayout"
+                        :layout="getLayoutForPath(tab.path)"
                         :track-relative-time="trackNavigatorRelativeTime"
                         :is-active-pane="activeTabId ? activeTabId === tab.id : index === 0"
                         :is-split-view="true"
@@ -1092,7 +1098,7 @@ onUnmounted(() => {
                       :ref="(el) => setPaneRef(el as FileBrowserInstance, workspacesStore.currentTabGroup![0].id)"
                       :tab="workspacesStore.currentTabGroup[0]"
                       :pane-index="0"
-                      :layout="currentLayout"
+                      :layout="getLayoutForPath(workspacesStore.currentTabGroup[0].path)"
                       :track-relative-time="trackNavigatorRelativeTime"
                       :is-active-pane="true"
                       class="navigator-page__pane"
@@ -1211,7 +1217,7 @@ onUnmounted(() => {
                     :ref="(el) => setPaneRef(el as FileBrowserInstance, tab.id)"
                     :tab="tab"
                     :pane-index="index"
-                    :layout="currentLayout"
+                    :layout="getLayoutForPath(tab.path)"
                     :track-relative-time="trackNavigatorRelativeTime"
                     :is-active-pane="activeTabId ? activeTabId === tab.id : index === 0"
                     :is-split-view="true"
@@ -1233,7 +1239,7 @@ onUnmounted(() => {
                   :ref="(el) => setPaneRef(el as FileBrowserInstance, workspacesStore.currentTabGroup![0].id)"
                   :tab="workspacesStore.currentTabGroup[0]"
                   :pane-index="0"
-                  :layout="currentLayout"
+                  :layout="getLayoutForPath(workspacesStore.currentTabGroup[0].path)"
                   :track-relative-time="trackNavigatorRelativeTime"
                   :is-active-pane="true"
                   class="navigator-page__pane"
@@ -1299,8 +1305,7 @@ onUnmounted(() => {
   overflow: hidden;
   height: calc(100vh - var(--window-toolbar-height));
   flex-direction: column;
-  padding-right: 6px;
-  padding-bottom: 6px;
+  padding: 12px 6px 6px;
   color: hsl(var(--foreground));
 }
 

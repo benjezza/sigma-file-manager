@@ -24,9 +24,10 @@ defineProps<{
   display: flex;
   align-items: center;
   padding: 8px 12px;
+  border: 1px solid var(--file-browser-group-border-color);
   border-radius: var(--radius-sm);
-  background-color: hsl(var(--secondary) / 50%);
-  color: hsl(var(--muted-foreground));
+  background-color: var(--file-browser-group-background);
+  color: var(--file-browser-group-foreground);
   font-size: 12px;
   font-weight: 500;
   gap: 8px;
@@ -37,7 +38,8 @@ defineProps<{
 .file-browser-grid-section-bar__count {
   padding: 2px 8px;
   border-radius: 10px;
-  background-color: hsl(var(--background-3));
+  background-color: var(--file-browser-group-count-background);
+  color: var(--file-browser-group-count-foreground);
   font-size: 11px;
 }
 </style>

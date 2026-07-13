@@ -12,7 +12,7 @@ import {
 } from '@/modules/themes/registry';
 import { useExtensionsStorageStore } from '@/stores/storage/extensions';
 import { useUserSettingsStore } from '@/stores/storage/user-settings';
-import type { Theme } from '@/types/user-settings';
+import type { BuiltinThemeId, Theme } from '@/types/user-settings';
 import { useI18n } from 'vue-i18n';
 import { computed } from 'vue';
 import { SunMoonIcon } from '@lucide/vue';
@@ -33,6 +33,36 @@ const extensionsStorageStore = useExtensionsStorageStore();
 const userSettingsStore = useUserSettingsStore();
 const { t } = useI18n();
 
+function getBuiltinThemeName(themeId: BuiltinThemeId): string {
+  const darkLabel = t('settings.homeBannerEffects.theme.themeTypeRadio.dark');
+
+  if (themeId === 'dark') {
+    return darkLabel;
+  }
+
+  if (themeId === 'dark-accent') {
+    return `${darkLabel} + Rose`;
+  }
+
+  if (themeId === 'dark-orange') {
+    return `${darkLabel} + Orange`;
+  }
+
+  if (themeId === 'dark-violet') {
+    return `${darkLabel} + Violet`;
+  }
+
+  if (themeId === 'dark-cyan') {
+    return `${darkLabel} + Cyan`;
+  }
+
+  if (themeId === 'light') {
+    return t('settings.homeBannerEffects.theme.themeTypeRadio.light');
+  }
+
+  return t('system');
+}
+
 const availableThemeOptions = computed(() => {
   return getAvailableThemeOptions(extensionsStorageStore.extensionsData.installedExtensions);
 });
@@ -41,11 +71,7 @@ const builtinThemeOptions = computed<ThemeSelectOption[]>(() => {
   return availableThemeOptions.value.flatMap((option) => {
     if (option.source === 'builtin') {
       return [{
-        name: option.builtinThemeId === 'dark'
-          ? t('settings.homeBannerEffects.theme.themeTypeRadio.dark')
-          : option.builtinThemeId === 'light'
-            ? t('settings.homeBannerEffects.theme.themeTypeRadio.light')
-            : t('system'),
+        name: getBuiltinThemeName(option.builtinThemeId),
         value: option.id,
         source: option.source,
       }];

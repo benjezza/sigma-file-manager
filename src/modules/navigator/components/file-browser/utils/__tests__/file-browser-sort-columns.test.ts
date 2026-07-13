@@ -5,11 +5,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   getFileBrowserListColumnLabelKey,
+  getNavigatorLayoutForPath,
+  getNavigatorPathPreferenceKey,
   getNavigatorSortColumnChangeUpdates,
   getNavigatorSortSettingsForLayout,
   getNavigatorGroupByForLayout,
   getNavigatorGroupBySettingKey,
   getNavigatorSortSettingKeys,
+  getUpdatedNavigatorPathViewPreferences,
   getNextNavigatorSortDirection,
   getResolvedNavigatorSortColumn,
   isLinkMetadataSortColumn,
@@ -34,6 +37,7 @@ function createNavigatorSettings(overrides: Partial<UserSettingsNavigator> = {})
         file: { height: 0 },
       },
     },
+    pathViewPreferences: {},
     infoPanel: {
       show: false,
       dynamicSize: false,
@@ -131,6 +135,48 @@ describe('file browser sort columns', () => {
     expect(getNavigatorGroupBySettingKey('grid')).toBe('navigator.gridGroupBy');
   });
 
+  it('prefers path-specific sort and group settings when available', () => {
+    const navigator = createNavigatorSettings({
+      listSortColumn: 'name',
+      listSortDirection: 'asc',
+      listGroupBy: 'none',
+      pathViewPreferences: {
+        'd:/downloads': {
+          listSortColumn: 'kind',
+          listSortDirection: 'desc',
+          listGroupBy: 'modified',
+        },
+      },
+    });
+
+    expect(getNavigatorSortSettingsForLayout(navigator, 'list', 'D:\\Downloads\\')).toEqual({
+      column: 'kind',
+      direction: 'desc',
+    });
+    expect(getNavigatorGroupByForLayout(navigator, 'list', 'd:/downloads')).toBe('modified');
+  });
+
+  it('resolves path-specific layout overrides', () => {
+    const navigator = createNavigatorSettings({
+      pathViewPreferences: {
+        'd:/downloads': {
+          layoutType: {
+            title: 'gridLayout',
+            name: 'grid',
+          },
+        },
+      },
+    });
+
+    expect(getNavigatorLayoutForPath(navigator, 'D:\\Downloads')).toBe('grid');
+    expect(getNavigatorLayoutForPath(navigator, 'D:\\Projects')).toBe('list');
+  });
+
+  it('normalizes Windows-style path preference keys', () => {
+    expect(getNavigatorPathPreferenceKey('D:\\Downloads\\')).toBe('d:/downloads');
+    expect(getNavigatorPathPreferenceKey('//Server/Share/Folder/')).toBe('//server/share/folder');
+  });
+
   it('resets direction to asc when the sort column changes', () => {
     const navigator = createNavigatorSettings({
       listSortColumn: 'size',
@@ -188,6 +234,41 @@ describe('file browser sort columns', () => {
       listSortColumn: null,
       gridSortColumn: 'name',
     }))).toBe(false);
+  });
+
+  it('includes item counts when the current path overrides sorting to items', () => {
+    const navigator = createNavigatorSettings({
+      listSortColumn: 'name',
+      gridSortColumn: 'name',
+      pathViewPreferences: {
+        'd:/downloads': {
+          listSortColumn: 'items',
+        },
+      },
+    });
+
+    expect(shouldIncludeItemCountsForSort(navigator, 'D:\\Downloads')).toBe(true);
+    expect(shouldIncludeItemCountsForSort(navigator, 'D:\\Projects')).toBe(false);
+  });
+
+  it('builds path-specific preference updates without mutating existing entries', () => {
+    const navigator = createNavigatorSettings({
+      pathViewPreferences: {
+        'd:/downloads': {
+          listSortColumn: 'name',
+          listSortDirection: 'asc',
+        },
+      },
+    });
+
+    expect(getUpdatedNavigatorPathViewPreferences(navigator, 'D:\\Downloads', {
+      listSortColumn: 'kind',
+    })).toEqual({
+      'd:/downloads': {
+        listSortColumn: 'kind',
+        listSortDirection: 'asc',
+      },
+    });
   });
 
   it('identifies link metadata sort columns', () => {

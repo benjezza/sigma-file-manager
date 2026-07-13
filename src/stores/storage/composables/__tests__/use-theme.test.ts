@@ -104,6 +104,29 @@ describe('useTheme', () => {
     expect(document.documentElement.style.getPropertyValue('--primary')).toBe('');
   });
 
+  it('applies and switches builtin dark accent variant classes', async () => {
+    const theme = ref<Theme>('dark-accent');
+    useTheme(theme);
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(document.documentElement.classList.contains('dark-accent')).toBe(true);
+    expect(document.documentElement.classList.contains('dark-orange')).toBe(false);
+
+    theme.value = 'dark-orange';
+    await nextTick();
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(document.documentElement.classList.contains('dark-accent')).toBe(false);
+    expect(document.documentElement.classList.contains('dark-orange')).toBe(true);
+
+    theme.value = 'dark';
+    await nextTick();
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(document.documentElement.classList.contains('dark-accent')).toBe(false);
+    expect(document.documentElement.classList.contains('dark-orange')).toBe(false);
+  });
+
   it('uses a view transition after initial theme changes', async () => {
     const skipTransitionMock = vi.fn();
     const animateMock = vi.fn(() => ({

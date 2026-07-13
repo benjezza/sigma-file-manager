@@ -34,6 +34,10 @@ import { useUserSettingsStore } from '@/stores/storage/user-settings';
 import { useShortcutsStore } from '@/stores/runtime/shortcuts';
 import type { SplitViewMode } from '@/types/user-settings';
 import { useInfoPanelLayout } from '@/modules/navigator/components/info-panel/composables/use-info-panel-layout';
+import {
+  getNavigatorLayoutForPath,
+  getUpdatedNavigatorPathViewPreferences,
+} from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
 import NavigatorLayoutSortControls from './navigator-layout-sort-controls.vue';
 
 type LayoutType = 'list' | 'grid';
@@ -42,6 +46,7 @@ const props = defineProps<{
   isSplitView: boolean;
   showInfoPanel: boolean;
   isGlobalSearchOpen: boolean;
+  currentPath?: string;
 }>();
 
 const emit = defineEmits<{
@@ -55,8 +60,10 @@ const userSettingsStore = useUserSettingsStore();
 const shortcutsStore = useShortcutsStore();
 
 const currentLayout = computed(() => {
-  const layoutName = userSettingsStore.userSettings.navigator.layout.type.name;
-  return layoutName === 'compact-list' ? 'list' : layoutName;
+  return getNavigatorLayoutForPath(
+    userSettingsStore.userSettings.navigator,
+    props.currentPath,
+  );
 });
 
 const showHiddenFiles = computed(() => userSettingsStore.userSettings.navigator.showHiddenFiles);
@@ -74,10 +81,22 @@ function setSplitViewMode(mode: SplitViewMode) {
 
 async function setLayout(layoutName: LayoutType) {
   const layoutTitle = layoutName === 'grid' ? 'gridLayout' : 'listLayout';
-  await userSettingsStore.set('navigator.layout.type', {
+  const layoutType = {
     title: layoutTitle,
     name: layoutName,
-  });
+  } as const;
+  const nextPreferences = getUpdatedNavigatorPathViewPreferences(
+    userSettingsStore.userSettings.navigator,
+    props.currentPath,
+    { layoutType },
+  );
+
+  if (nextPreferences) {
+    await userSettingsStore.set('navigator.pathViewPreferences', nextPreferences);
+    return;
+  }
+
+  await userSettingsStore.set('navigator.layout.type', layoutType);
 }
 
 function handleToggleHiddenFiles(checked: boolean) {
@@ -144,7 +163,10 @@ function handleToggleInfoPanelDynamicSize(enabled: boolean) {
                   <span>{{ t('grid') }}</span>
                 </button>
               </div>
-              <NavigatorLayoutSortControls :sort-layout="currentLayout" />
+              <NavigatorLayoutSortControls
+                :sort-layout="currentLayout"
+                :current-path="props.currentPath"
+              />
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

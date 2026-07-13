@@ -23,6 +23,8 @@ export interface FileBrowserContext {
   error: Ref<string | null>;
 
   selectedEntries: Ref<DirEntry[]>;
+  isMarqueeSelecting: Ref<boolean>;
+  marqueeSelectionStyle: ComputedRef<Record<string, string>>;
   isEntrySelected: (entry: DirEntry) => boolean;
   contextMenu: Ref<ContextMenuState>;
 
@@ -46,6 +48,7 @@ export interface FileBrowserContext {
 
   onEntryMouseDown: (entry: DirEntry, event: MouseEvent) => void;
   onEntryMouseUp: (entry: DirEntry, event: MouseEvent) => void;
+  onEntriesContainerMouseDown: (event: MouseEvent) => void;
   handleEntryFocus: (entry: DirEntry, event: FocusEvent) => void;
   handleEntryContextMenu: (entry: DirEntry) => void;
   handleBackgroundContextMenu: () => void;

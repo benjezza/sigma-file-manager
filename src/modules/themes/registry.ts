@@ -5,10 +5,19 @@
 import type { InstalledExtensionData } from '@/types/extension';
 import type { BuiltinThemeId, Theme } from '@/types/user-settings';
 
-export const BUILTIN_THEME_IDS = ['dark', 'light', 'system'] as const;
+export const BUILTIN_THEME_IDS = [
+  'dark',
+  'dark-accent',
+  'dark-orange',
+  'dark-violet',
+  'dark-cyan',
+  'light',
+  'system',
+] as const;
 export const DEFAULT_THEME_ID: BuiltinThemeId = 'dark';
+const BUILTIN_THEME_ID_SET = new Set<string>(BUILTIN_THEME_IDS);
 
-type ResolvedBuiltinThemeId = Exclude<BuiltinThemeId, 'system'>;
+type ResolvedBuiltinThemeId = 'dark' | 'light';
 
 type BuiltinThemeOption = {
   id: BuiltinThemeId;
@@ -50,10 +59,10 @@ export function createExtensionThemeId(extensionId: string, themeId: string): Th
 }
 
 export function parseThemeId(theme: string): ParsedThemeId | null {
-  if (theme === 'dark' || theme === 'light' || theme === 'system') {
+  if (BUILTIN_THEME_ID_SET.has(theme)) {
     return {
       source: 'builtin',
-      builtinThemeId: theme,
+      builtinThemeId: theme as BuiltinThemeId,
     };
   }
 

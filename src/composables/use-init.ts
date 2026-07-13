@@ -47,6 +47,14 @@ const APP_LAUNCH_ARGS_EVENT = 'app-launch-args';
 const STARTUP_BACKGROUND_REFRESH_TIMEOUT_MS = 1500;
 const STARTUP_DIR_ENTRY_TIMEOUT_MS = 2000;
 
+function resolveBuiltinNavigationRoutePath(routeName: string): string {
+  if (routeName === 'home') {
+    return '/';
+  }
+
+  return `/${routeName}`;
+}
+
 export function useInit() {
   const router = useRouter();
   const userSettingsStore = useUserSettingsStore();
@@ -88,7 +96,16 @@ export function useInit() {
 
     for (const shortcut of BUILTIN_NAVIGATION_PAGE_SHORTCUTS) {
       shortcutsStore.registerHandler(shortcut.id, () => {
-        router.push({ name: shortcut.routeName });
+        void router.push({ name: shortcut.routeName }).catch(async () => {
+          const fallbackPath = resolveBuiltinNavigationRoutePath(shortcut.routeName);
+
+          try {
+            await router.push({ path: fallbackPath });
+          }
+          catch (error) {
+            console.error(`Failed to navigate with shortcut ${shortcut.id}:`, error);
+          }
+        });
       });
     }
 

@@ -107,6 +107,7 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
           },
         },
       },
+      pathViewPreferences: {},
       infoPanel: {
         show: false,
         dynamicSize: false,

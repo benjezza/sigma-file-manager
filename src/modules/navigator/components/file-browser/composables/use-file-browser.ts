@@ -39,6 +39,7 @@ import { useFileBrowserDrag } from './use-file-browser-drag';
 import { useFileBrowserInternalDropHandler } from './use-file-browser-internal-drop';
 import { useFileBrowserExternalDrop } from './use-file-browser-external-drop';
 import { useFileBrowserVirtualLayout } from './use-file-browser-virtual-layout';
+import { useFileBrowserMarqueeSelection } from './use-file-browser-marquee-selection';
 import { useNavigatorImageThumbnails } from '@/modules/navigator/composables/use-navigator-image-thumbnails';
 import { useVideoThumbnails } from './use-video-thumbnails';
 import {
@@ -49,8 +50,9 @@ import {
 function createNavigatorSortSettingsComputed(
   getNavigator: () => UserSettingsNavigator,
   layout: () => 'list' | 'grid' | undefined,
+  path: () => string | null | undefined,
 ) {
-  return computed(() => getNavigatorSortSettingsForLayout(getNavigator(), layout()));
+  return computed(() => getNavigatorSortSettingsForLayout(getNavigator(), layout(), path()));
 }
 
 function shouldApplyNavigatorSort(layout: 'list' | 'grid' | undefined) {
@@ -131,6 +133,7 @@ function setupNavigationDataSource(
   const sortSettings = createNavigatorSortSettingsComputed(
     () => userSettingsStore.userSettings.navigator,
     options.layout,
+    () => navigation.currentPath.value,
   );
   const sortColumn = computed(() => sortSettings.value.column);
   const sortDirection = computed(() => sortSettings.value.direction);
@@ -202,6 +205,7 @@ function setupExternalDataSource(options: UseFileBrowserOptions): DataSource {
   const sortSettings = createNavigatorSortSettingsComputed(
     () => userSettingsStore.userSettings.navigator,
     options.layout,
+    () => getBasePath(),
   );
   const sortColumn = computed(() => sortSettings.value.column);
   const sortDirection = computed(() => sortSettings.value.direction);
@@ -298,10 +302,12 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
     groupBy: () => getNavigatorGroupByForLayout(
       userSettingsStore.userSettings.navigator,
       options.layout(),
+      dataSource.currentPath.value,
     ),
     sortDirection: () => getNavigatorSortSettingsForLayout(
       userSettingsStore.userSettings.navigator,
       options.layout(),
+      dataSource.currentPath.value,
     ).direction,
     entryDescription: options.entryDescription,
   });
@@ -385,6 +391,15 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
     },
   });
 
+  const marqueeSelection = useFileBrowserMarqueeSelection({
+    entries: visualEntries,
+    selectedEntries: selection.selectedEntries,
+    entriesContainerRef,
+    setSelection: selection.setSelection,
+    clearSelection: selection.clearSelection,
+    isEntryDragging: drag.isDragging,
+  });
+
   const actions = useFileBrowserActions({
     contextMenu: selection.contextMenu,
     selectedEntries: selection.selectedEntries,
@@ -395,6 +410,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
     handleEntryMouseDown: selection.handleEntryMouseDown,
     handleEntryMouseUp: selection.handleEntryMouseUp,
     handleDragMouseDown: drag.handleDragMouseDown,
+    shouldSuppressEntryDrag: () => marqueeSelection.shouldSuppressEntryDrag.value,
     isDragging: drag.isDragging,
   });
 
@@ -545,6 +561,8 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
     closeFilter: dataSource.closeFilter,
 
     selectedEntries: selection.selectedEntries,
+    isMarqueeSelecting: marqueeSelection.isMarqueeSelecting,
+    marqueeSelectionStyle: marqueeSelection.marqueeSelectionStyle,
     contextMenu: selection.contextMenu,
     renameState: selection.renameState,
     isEntrySelected: selection.isEntrySelected,
@@ -621,6 +639,7 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
     onContextMenuAction: actions.onContextMenuAction,
     onEntryMouseDown: actions.onEntryMouseDown,
     onEntryMouseUp: actions.onEntryMouseUp,
+    onEntriesContainerMouseDown: marqueeSelection.handleEntriesContainerMouseDown,
 
     quickView: actions.quickView,
     printEntry: actions.printEntry,

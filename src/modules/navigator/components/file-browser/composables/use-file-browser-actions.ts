@@ -33,6 +33,7 @@ export function useFileBrowserActions(options: {
   handleEntryMouseDown: (entry: DirEntry, event: MouseEvent) => void;
   handleEntryMouseUp: (entry: DirEntry, event: MouseEvent) => void;
   handleDragMouseDown?: (entry: DirEntry, event: MouseEvent) => void;
+  shouldSuppressEntryDrag?: () => boolean;
   isDragging?: Ref<boolean>;
 }) {
   const { t } = useI18n();
@@ -139,7 +140,11 @@ export function useFileBrowserActions(options: {
   function onEntryMouseDown(entry: DirEntry, event: MouseEvent) {
     options.handleEntryMouseDown(entry, event);
 
-    if (options.handleDragMouseDown && event.button === 0) {
+    if (
+      options.handleDragMouseDown
+      && event.button === 0
+      && !options.shouldSuppressEntryDrag?.()
+    ) {
       options.handleDragMouseDown(entry, event);
     }
   }

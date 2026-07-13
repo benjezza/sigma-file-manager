@@ -79,6 +79,10 @@ describe('theme registry', () => {
 
     expect(availableThemes.map(theme => theme.id)).toEqual([
       'dark',
+      'dark-accent',
+      'dark-orange',
+      'dark-violet',
+      'dark-cyan',
       'light',
       'system',
       'extension:test.palette:midnight',

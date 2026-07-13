@@ -78,6 +78,24 @@ function openExtensionPage(pageId: string) {
   });
 }
 
+async function openSidebarPage(routeName: unknown, routePath: string) {
+  try {
+    if (typeof routeName === 'string') {
+      await router.push({ name: routeName });
+      return;
+    }
+  }
+  catch {
+  }
+
+  try {
+    await router.push({ path: routePath });
+  }
+  catch (error) {
+    console.error(`Failed to navigate to sidebar route: ${routePath}`, error);
+  }
+}
+
 function getPageShortcutLabel(routeName: unknown): string {
   const shortcut = BUILTIN_NAVIGATION_PAGE_SHORTCUTS.find(
     item => item.routeName === routeName,
@@ -148,7 +166,7 @@ function getDriveIcon(drive: {
               size="icon"
               :value="item.name"
               :is-active="item.name === router.currentRoute.value.name"
-              @click="router.push({ name: item.name })"
+              @click="openSidebarPage(item.name, item.path)"
             >
               <component
                 :is="item.icon"
@@ -184,7 +202,7 @@ function getDriveIcon(drive: {
               size="icon"
               :value="item.name"
               :is-active="item.name === router.currentRoute.value.name"
-              @click="router.push({ name: item.name })"
+              @click="openSidebarPage(item.name, item.path)"
             >
               <component
                 :is="item.icon"

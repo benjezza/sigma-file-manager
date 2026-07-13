@@ -88,6 +88,11 @@
   --success: 174 100% 27%;
   --dangerous: 4 82% 58%;
   --warning: 38 70% 50%;
+  --file-browser-group-background: hsl(var(--background-3));
+  --file-browser-group-border-color: hsl(var(--border) / 40%);
+  --file-browser-group-foreground: hsl(var(--muted-foreground));
+  --file-browser-group-count-background: hsl(var(--secondary));
+  --file-browser-group-count-foreground: hsl(var(--foreground));
 }
 
 .dark {
@@ -121,4 +126,76 @@
   --success: 174 100% 27%;
   --dangerous: 4 82% 58%;
   --warning: 43 70% 56%;
+  --file-browser-group-background: hsl(var(--background-3));
+  --file-browser-group-border-color: hsl(var(--border) / 45%);
+  --file-browser-group-foreground: hsl(var(--muted-foreground));
+  --file-browser-group-count-background: hsl(var(--secondary) / 90%);
+  --file-browser-group-count-foreground: hsl(var(--foreground) / 92%);
+}
+
+.dark.dark-accent,
+.dark.dark-orange,
+.dark.dark-violet,
+.dark.dark-cyan {
+  --file-browser-group-background: hsl(var(--primary) / 14%);
+  --file-browser-group-border-color: hsl(var(--primary) / 32%);
+  --file-browser-group-foreground: hsl(var(--secondary-foreground));
+  --file-browser-group-count-background: hsl(var(--primary) / 26%);
+  --file-browser-group-count-foreground: hsl(var(--secondary-foreground));
+}
+
+.dark.dark-accent {
+  --background-2: 235 12% 17%;
+  --background-3: 282 12% 14%;
+  --window-toolbar: 270 12% 20%;
+  --icon: 320 10% 67%;
+  --muted: 290 12% 21%;
+  --muted-foreground: 324 20% 72%;
+  --border: 286 10% 26%;
+  --primary: 326 57% 64%;
+  --secondary: 292 15% 23%;
+  --secondary-foreground: 330 35% 86%;
+  --ring: 24 80% 64%;
+}
+
+.dark.dark-orange {
+  --background-2: 232 11% 17%;
+  --background-3: 246 11% 14%;
+  --window-toolbar: 250 12% 20%;
+  --icon: 28 14% 69%;
+  --muted: 254 12% 21%;
+  --muted-foreground: 26 24% 73%;
+  --border: 250 10% 26%;
+  --primary: 24 74% 63%;
+  --secondary: 258 15% 23%;
+  --secondary-foreground: 30 34% 87%;
+  --ring: 34 86% 65%;
+}
+
+.dark.dark-violet {
+  --background-2: 236 12% 17%;
+  --background-3: 254 13% 14%;
+  --window-toolbar: 258 13% 20%;
+  --icon: 262 16% 72%;
+  --muted: 260 14% 21%;
+  --muted-foreground: 266 28% 77%;
+  --border: 258 12% 27%;
+  --primary: 270 62% 68%;
+  --secondary: 262 16% 24%;
+  --secondary-foreground: 276 38% 88%;
+  --ring: 274 70% 70%;
+}
+
+.dark.dark-cyan {
+  --background-2: 220 11% 17%;
+  --background-3: 208 12% 14%;
+  --window-toolbar: 206 13% 20%;
+  --icon: 186 17% 72%;
+  --muted: 206 13% 21%;
+  --muted-foreground: 184 24% 76%;
+  --border: 206 11% 27%;
+  --primary: 186 56% 61%;
+  --secondary: 202 15% 24%;
+  --secondary-foreground: 188 34% 87%;
+  --ring: 192 66% 67%;
 }
