@@ -67,8 +67,8 @@ npm run check
 
 9. Build the app to make sure there's no issues with building
 
-```
-npm run tauri:build
+```powershell
+yarn tauri:build
 ```
 
 The build can be configured in the `./vite.config.js` file.

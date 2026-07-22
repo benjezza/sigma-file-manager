@@ -180,3 +180,15 @@ The funding will be used for funding the development of this and my other big pr
 ## For developers
 
 If you'd like to contribute your skills to improve this project, follow this guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+### Build the Windows installer
+
+```powershell
+yarn tauri:build
+```
+
+This produces the installable NSIS `.exe` at:
+
+```powershell
+src-tauri\target\release\bundle\nsis\Sigma File Manager_<version>_x64-setup.exe
+```
