@@ -60,6 +60,16 @@ git merge-tree --write-tree --name-only main upstream/main
 
 ## Phase 3 - Build and review official v2 from source (optional but recommended)
 
+Before running any build/dev command, make sure you are on the official review branch:
+
+```powershell
+git switch upgrade/upstream-v2
+git branch --show-current
+git status
+```
+
+Expected branch: `upgrade/upstream-v2`.
+
 Install dependencies (if needed):
 
 ```powershell
