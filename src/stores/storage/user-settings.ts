@@ -107,6 +107,7 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
           },
         },
       },
+      pathViewPreferences: {},
       infoPanel: {
         show: false,
         dynamicSize: false,
@@ -137,8 +138,10 @@ export const useUserSettingsStore = defineStore('userSettings', () => {
       listColumnOrder: ['items', 'size', 'modified', 'created', 'tags', 'kind', 'links', 'linkStatus'],
       listSortColumn: null,
       listSortDirection: 'asc',
+      listGroupBy: 'none',
       gridSortColumn: 'name',
       gridSortDirection: 'asc',
+      gridGroupBy: 'kind',
       enableBoxSelection: false,
       increaseFileViewGaps: false,
     },

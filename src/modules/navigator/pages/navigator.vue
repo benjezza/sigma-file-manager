@@ -44,6 +44,7 @@ import {
 } from '@/modules/navigator/components/info-panel/composables/use-info-panel-layout';
 import { NavigatorToolbarActions } from '@/modules/navigator/components/navigator-toolbar-actions';
 import { ClipboardToolbar } from '@/modules/navigator/components/clipboard-toolbar';
+import { getNavigatorLayoutForPath } from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
 import { GlobalSearchView } from '@/modules/global-search';
 import type { DirEntry } from '@/types/dir-entry';
 import type { SplitViewMode } from '@/types/user-settings';
@@ -246,10 +247,12 @@ watch(() => workspacesStore.currentTabGroup, (newGroup, oldGroup) => {
   }
 });
 
-const currentLayout = computed(() => {
-  const layoutName = userSettingsStore.userSettings.navigator.layout.type.name;
-  return layoutName === 'compact-list' ? 'list' : layoutName;
-});
+function getLayoutForPath(path: string | null | undefined): 'list' | 'grid' {
+  return getNavigatorLayoutForPath(
+    userSettingsStore.userSettings.navigator,
+    path,
+  );
+}
 
 const infoPanelEntry = computed(() => {
   if (selectedEntries.value.length > 0) {
@@ -268,6 +271,8 @@ const trackNavigatorRelativeTime = computed(() => !globalSearchStore.isOpen);
 const currentActivePath = computed(() => {
   return currentDirEntry.value?.path;
 });
+
+const currentLayout = computed(() => getLayoutForPath(currentActivePath.value));
 
 const wasSplitViewBeforeSearch = ref(false);
 
@@ -1142,6 +1147,7 @@ onUnmounted(() => {
     :is-split-view="isSplitView"
     :show-info-panel="showInfoPanel"
     :is-global-search-open="globalSearchStore.isOpen"
+    :current-path="currentActivePath"
     @toggle-split-view="handleToggleSplitView"
     @toggle-info-panel="handleToggleInfoPanel"
     @set-split-view-mode="handleSetSplitViewMode"
@@ -1204,7 +1210,7 @@ onUnmounted(() => {
                         :ref="(el) => setPaneRef(el as FileBrowserInstance, tab.id)"
                         :tab="tab"
                         :pane-index="index"
-                        :layout="currentLayout"
+                        :layout="getLayoutForPath(tab.path)"
                         :track-relative-time="trackNavigatorRelativeTime"
                         :is-active-pane="activeTabId ? activeTabId === tab.id : index === 0"
                         :is-split-view="true"
@@ -1226,7 +1232,7 @@ onUnmounted(() => {
                       :ref="(el) => setPaneRef(el as FileBrowserInstance, workspacesStore.currentTabGroup![0].id)"
                       :tab="workspacesStore.currentTabGroup[0]"
                       :pane-index="0"
-                      :layout="currentLayout"
+                      :layout="getLayoutForPath(workspacesStore.currentTabGroup[0].path)"
                       :track-relative-time="trackNavigatorRelativeTime"
                       :is-active-pane="true"
                       class="navigator-page__pane"
@@ -1345,7 +1351,7 @@ onUnmounted(() => {
                     :ref="(el) => setPaneRef(el as FileBrowserInstance, tab.id)"
                     :tab="tab"
                     :pane-index="index"
-                    :layout="currentLayout"
+                    :layout="getLayoutForPath(tab.path)"
                     :track-relative-time="trackNavigatorRelativeTime"
                     :is-active-pane="activeTabId ? activeTabId === tab.id : index === 0"
                     :is-split-view="true"
@@ -1367,7 +1373,7 @@ onUnmounted(() => {
                   :ref="(el) => setPaneRef(el as FileBrowserInstance, workspacesStore.currentTabGroup![0].id)"
                   :tab="workspacesStore.currentTabGroup[0]"
                   :pane-index="0"
-                  :layout="currentLayout"
+                  :layout="getLayoutForPath(workspacesStore.currentTabGroup[0].path)"
                   :track-relative-time="trackNavigatorRelativeTime"
                   :is-active-pane="true"
                   class="navigator-page__pane"

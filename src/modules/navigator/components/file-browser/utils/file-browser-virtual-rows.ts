@@ -8,7 +8,7 @@ import { FILE_BROWSER_GRID_GAP_DEFAULT } from './file-browser-layout-gaps';
 export const GRID_MIN_COLUMN_WIDTH = 170;
 export const GRID_VIEW_PADDING_X = 0;
 
-export type FileBrowserGridSectionKey = 'dirs' | 'images' | 'videos' | 'others';
+export type FileBrowserGridSectionKey = string;
 export type FileBrowserGridEntryVariant = 'dir' | 'image' | 'video' | 'other';
 
 interface FileBrowserVirtualRowBase {
@@ -23,9 +23,18 @@ export interface FileBrowserListVirtualRow extends FileBrowserVirtualRowBase {
   entryIndex: number;
 }
 
+export interface FileBrowserListGroupVirtualRow extends FileBrowserVirtualRowBase {
+  type: 'list-group';
+  groupId: string;
+  groupLabel: string;
+  count: number;
+}
+
 export interface FileBrowserGridSectionVirtualRow extends FileBrowserVirtualRowBase {
   type: 'grid-section';
-  sectionKey: FileBrowserGridSectionKey;
+  sectionId: string;
+  sectionKey?: FileBrowserGridSectionKey;
+  label: string;
   variant: FileBrowserGridEntryVariant;
   count: number;
   stickyIndex: number;
@@ -33,7 +42,8 @@ export interface FileBrowserGridSectionVirtualRow extends FileBrowserVirtualRowB
 
 export interface FileBrowserGridItemsVirtualRow extends FileBrowserVirtualRowBase {
   type: 'grid-items';
-  sectionKey: FileBrowserGridSectionKey;
+  sectionId: string;
+  sectionKey?: FileBrowserGridSectionKey;
   variant: FileBrowserGridEntryVariant;
   entries: DirEntry[];
   rowIndex: number;
@@ -41,6 +51,7 @@ export interface FileBrowserGridItemsVirtualRow extends FileBrowserVirtualRowBas
 
 export type FileBrowserVirtualRow
   = FileBrowserListVirtualRow
+    | FileBrowserListGroupVirtualRow
     | FileBrowserGridSectionVirtualRow
     | FileBrowserGridItemsVirtualRow;
 

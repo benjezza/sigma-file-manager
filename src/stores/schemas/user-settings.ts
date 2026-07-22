@@ -16,7 +16,7 @@ import {
 import { BUILTIN_NAVIGATOR_ICON_THEME_IDS } from '@/types/icon-theme';
 
 export const USER_SETTINGS_SCHEMA_VERSION_KEY = '__schemaVersion';
-export const USER_SETTINGS_SCHEMA_VERSION = 24;
+export const USER_SETTINGS_SCHEMA_VERSION = 25;
 
 export const DEFAULT_GLOBAL_SEARCH_IGNORED_PATHS = [
   '/node_modules',
@@ -453,6 +453,40 @@ async function migrateUserSettingsStep(storage: StorageAdapter, fromVersion: num
       'navigator.enableBoxSelection',
       currentBoxSelectionEnabled ?? legacyBoxSelectionEnabled === true,
     );
+  }
+
+  if (fromVersion === 24 && toVersion === 25) {
+    const existingPathViewPreferences = await storage.get<unknown>('navigator.pathViewPreferences');
+
+    if (
+      !existingPathViewPreferences
+      || typeof existingPathViewPreferences !== 'object'
+      || Array.isArray(existingPathViewPreferences)
+    ) {
+      await storage.set('navigator.pathViewPreferences', {});
+    }
+
+    const existingListGroupBy = await storage.get<unknown>('navigator.listGroupBy');
+
+    if (
+      existingListGroupBy !== 'none'
+      && existingListGroupBy !== 'name'
+      && existingListGroupBy !== 'modified'
+      && existingListGroupBy !== 'kind'
+    ) {
+      await storage.set('navigator.listGroupBy', 'none');
+    }
+
+    const existingGridGroupBy = await storage.get<unknown>('navigator.gridGroupBy');
+
+    if (
+      existingGridGroupBy !== 'none'
+      && existingGridGroupBy !== 'name'
+      && existingGridGroupBy !== 'modified'
+      && existingGridGroupBy !== 'kind'
+    ) {
+      await storage.set('navigator.gridGroupBy', 'kind');
+    }
   }
 
   if (fromVersion === 6 && toVersion === 7) {

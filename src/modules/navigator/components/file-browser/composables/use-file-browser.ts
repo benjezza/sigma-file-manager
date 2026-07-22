@@ -45,13 +45,17 @@ import { useFileBrowserVirtualLayout } from './use-file-browser-virtual-layout';
 import { useFileBrowserBoxSelection } from './use-file-browser-box-selection';
 import { useNavigatorImageThumbnails } from '@/modules/navigator/composables/use-navigator-image-thumbnails';
 import { useVideoThumbnails } from './use-video-thumbnails';
-import { getNavigatorSortSettingsForLayout } from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
+import {
+  getNavigatorGroupByForLayout,
+  getNavigatorSortSettingsForLayout,
+} from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
 
 function createNavigatorSortSettingsComputed(
   getNavigator: () => UserSettingsNavigator,
   layout: () => 'list' | 'grid' | undefined,
+  path: () => string | null | undefined,
 ) {
-  return computed(() => getNavigatorSortSettingsForLayout(getNavigator(), layout()));
+  return computed(() => getNavigatorSortSettingsForLayout(getNavigator(), layout(), path()));
 }
 
 function shouldApplyNavigatorSort(layout: 'list' | 'grid' | undefined) {
@@ -134,6 +138,7 @@ function setupNavigationDataSource(
   const sortSettings = createNavigatorSortSettingsComputed(
     () => userSettingsStore.userSettings.navigator,
     options.layout,
+    () => navigation.currentPath.value,
   );
   const sortColumn = computed(() => sortSettings.value.column);
   const sortDirection = computed(() => sortSettings.value.direction);
@@ -205,6 +210,7 @@ function setupExternalDataSource(options: UseFileBrowserOptions): DataSource {
   const sortSettings = createNavigatorSortSettingsComputed(
     () => userSettingsStore.userSettings.navigator,
     options.layout,
+    () => getBasePath(),
   );
   const sortColumn = computed(() => sortSettings.value.column);
   const sortDirection = computed(() => sortSettings.value.direction);
@@ -306,6 +312,16 @@ export function useFileBrowser(options: UseFileBrowserOptions) {
   const virtualLayout = useFileBrowserVirtualLayout({
     entries: visualEntries,
     layout: options.layout,
+    groupBy: () => getNavigatorGroupByForLayout(
+      userSettingsStore.userSettings.navigator,
+      options.layout(),
+      dataSource.currentPath.value,
+    ),
+    sortDirection: () => getNavigatorSortSettingsForLayout(
+      userSettingsStore.userSettings.navigator,
+      options.layout(),
+      dataSource.currentPath.value,
+    ).direction,
     entryDescription: options.entryDescription,
     increaseFileViewGaps: () => increaseFileViewGaps.value,
   });

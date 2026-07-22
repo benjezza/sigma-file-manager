@@ -11,46 +11,94 @@ import {
   SelectContent,
   SelectItem,
   SelectItemText,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from '@/components/ui/tooltip';
-import { ArrowUpIcon, ArrowDownIcon } from '@lucide/vue';
 import { useUserSettingsStore } from '@/stores/storage/user-settings';
+import type { ListGroupBy, ListSortColumn, ListSortDirection } from '@/types/user-settings';
 import {
-  FILE_BROWSER_SORT_COLUMNS,
   getFileBrowserListColumnLabel,
+  getNavigatorGroupByForLayout,
+  getNavigatorGroupBySettingKey,
   getNavigatorSortColumnChangeUpdates,
   getNavigatorSortSettingsForLayout,
-  getNextNavigatorSortDirection,
-  getNavigatorSortSettingKeys,
   getResolvedNavigatorSortColumn,
+  getUpdatedNavigatorPathViewPreferences,
   isListSortColumn,
 } from '@/modules/navigator/components/file-browser/utils/file-browser-sort-columns';
 
 const props = defineProps<{
   sortLayout: 'list' | 'grid';
+  currentPath?: string;
 }>();
 
 const { t } = useI18n();
 const userSettingsStore = useUserSettingsStore();
+const EXPLORER_SORT_COLUMNS: readonly ListSortColumn[] = ['name', 'modified', 'kind'];
+const GROUP_BY_OPTIONS: readonly ListGroupBy[] = ['none', 'name', 'modified', 'kind'];
+const SORT_DIRECTIONS: readonly ListSortDirection[] = ['asc', 'desc'];
 
 const sortSettings = computed(() => getNavigatorSortSettingsForLayout(
   userSettingsStore.userSettings.navigator,
   props.sortLayout,
+  props.currentPath,
 ));
 const activeSortColumn = computed(() => getResolvedNavigatorSortColumn(
   userSettingsStore.userSettings.navigator,
   props.sortLayout,
+  props.currentPath,
 ));
 const activeSortDirection = computed(() => sortSettings.value.direction);
+const activeGroupBy = computed(() => getNavigatorGroupByForLayout(
+  userSettingsStore.userSettings.navigator,
+  props.sortLayout,
+  props.currentPath,
+));
+
+function updateCurrentPathPreferences(update: {
+  listSortColumn?: ListSortColumn | null;
+  listSortDirection?: ListSortDirection;
+  listGroupBy?: ListGroupBy;
+  gridSortColumn?: ListSortColumn | null;
+  gridSortDirection?: ListSortDirection;
+  gridGroupBy?: ListGroupBy;
+}): boolean {
+  const nextPreferences = getUpdatedNavigatorPathViewPreferences(
+    userSettingsStore.userSettings.navigator,
+    props.currentPath,
+    update,
+  );
+
+  if (!nextPreferences) {
+    return false;
+  }
+
+  userSettingsStore.set('navigator.pathViewPreferences', nextPreferences);
+  return true;
+}
 
 function handleSortColumnChange(value: unknown) {
-  if (typeof value !== 'string' || !isListSortColumn(value)) {
+  if (
+    typeof value !== 'string'
+    || !isListSortColumn(value)
+    || !EXPLORER_SORT_COLUMNS.includes(value)
+  ) {
+    return;
+  }
+
+  const currentColumn = sortSettings.value.column;
+  const didSetPathPreference = props.sortLayout === 'grid'
+    ? updateCurrentPathPreferences({
+        gridSortColumn: value,
+        ...(currentColumn !== value ? { gridSortDirection: 'asc' } : {}),
+      })
+    : updateCurrentPathPreferences({
+        listSortColumn: value,
+        ...(currentColumn !== value ? { listSortDirection: 'asc' } : {}),
+      });
+
+  if (didSetPathPreference) {
     return;
   }
 
@@ -65,21 +113,64 @@ function handleSortColumnChange(value: unknown) {
   }
 }
 
-function toggleSortDirection() {
-  const settingKeys = getNavigatorSortSettingKeys(props.sortLayout);
+function handleSortDirectionChange(value: unknown) {
+  if (value !== 'asc' && value !== 'desc') {
+    return;
+  }
+
+  const didSetPathPreference = props.sortLayout === 'grid'
+    ? updateCurrentPathPreferences({ gridSortDirection: value })
+    : updateCurrentPathPreferences({ listSortDirection: value });
+
+  if (didSetPathPreference) {
+    return;
+  }
+
   userSettingsStore.set(
-    settingKeys.direction,
-    getNextNavigatorSortDirection(activeSortDirection.value),
+    props.sortLayout === 'grid' ? 'navigator.gridSortDirection' : 'navigator.listSortDirection',
+    value,
   );
+}
+
+function handleGroupByChange(value: unknown) {
+  if (value !== 'none' && value !== 'name' && value !== 'modified' && value !== 'kind') {
+    return;
+  }
+
+  const didSetPathPreference = props.sortLayout === 'grid'
+    ? updateCurrentPathPreferences({ gridGroupBy: value })
+    : updateCurrentPathPreferences({ listGroupBy: value });
+
+  if (didSetPathPreference) {
+    return;
+  }
+
+  userSettingsStore.set(getNavigatorGroupBySettingKey(props.sortLayout), value);
+}
+
+function getGroupByLabel(groupBy: ListGroupBy): string {
+  if (groupBy === 'none') {
+    return 'None';
+  }
+
+  if (groupBy === 'name') {
+    return t('fileBrowser.name');
+  }
+
+  if (groupBy === 'modified') {
+    return t('fileBrowser.modified');
+  }
+
+  return t('fileBrowser.kind');
 }
 </script>
 
 <template>
   <div class="navigator-layout-sort-controls">
-    <div class="navigator-layout-sort-controls__label">
-      {{ t('settings.navigator.sortBy') }}
-    </div>
-    <div class="navigator-layout-sort-controls__row">
+    <div class="navigator-layout-sort-controls__group">
+      <div class="navigator-layout-sort-controls__label">
+        {{ t('settings.navigator.sortBy') }}
+      </div>
       <Select
         :model-value="activeSortColumn"
         @update:model-value="handleSortColumnChange"
@@ -89,7 +180,7 @@ function toggleSortDirection() {
         </SelectTrigger>
         <SelectContent>
           <SelectItem
-            v-for="column in FILE_BROWSER_SORT_COLUMNS"
+            v-for="column in EXPLORER_SORT_COLUMNS"
             :key="column"
             :value="column"
           >
@@ -97,34 +188,58 @@ function toggleSortDirection() {
           </SelectItem>
         </SelectContent>
       </Select>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <button
-            type="button"
-            class="navigator-layout-sort-controls__direction"
-            :aria-label="activeSortDirection === 'asc'
-              ? t('settings.navigator.sortAscending')
-              : t('settings.navigator.sortDescending')"
-            @click="toggleSortDirection"
+    </div>
+
+    <div class="navigator-layout-sort-controls__group">
+      <div class="navigator-layout-sort-controls__label">
+        Sort direction
+      </div>
+      <Select
+        :model-value="activeSortDirection"
+        @update:model-value="handleSortDirectionChange"
+      >
+        <SelectTrigger class="navigator-layout-sort-controls__select">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem
+            v-for="direction in SORT_DIRECTIONS"
+            :key="direction"
+            :value="direction"
           >
-            <ArrowUpIcon
-              v-if="activeSortDirection === 'asc'"
-              :size="16"
-            />
-            <ArrowDownIcon
-              v-else
-              :size="16"
-            />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>
-          {{
-            activeSortDirection === 'asc'
-              ? t('settings.navigator.sortAscending')
-              : t('settings.navigator.sortDescending')
-          }}
-        </TooltipContent>
-      </Tooltip>
+            <SelectItemText>
+              {{ direction === 'asc' ? t('settings.navigator.sortAscending') : t('settings.navigator.sortDescending') }}
+            </SelectItemText>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    <div class="navigator-layout-sort-controls__group">
+      <div class="navigator-layout-sort-controls__label">
+        Group by
+      </div>
+      <Select
+        :model-value="activeGroupBy"
+        @update:model-value="handleGroupByChange"
+      >
+        <SelectTrigger class="navigator-layout-sort-controls__select">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem
+            v-for="groupBy in GROUP_BY_OPTIONS"
+            :key="groupBy"
+            :value="groupBy"
+          >
+            <SelectItemText>{{ getGroupByLabel(groupBy) }}</SelectItemText>
+          </SelectItem>
+          <SelectSeparator />
+          <SelectItem value="__disabled" disabled>
+            <SelectItemText>Grouping affects both list and grid in current path</SelectItemText>
+          </SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   </div>
 </template>
@@ -135,6 +250,13 @@ function toggleSortDirection() {
   width: 100%;
   flex-direction: column;
   margin-top: 4px;
+  gap: 8px;
+}
+
+.navigator-layout-sort-controls__group {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
   gap: 4px;
 }
 
@@ -143,40 +265,8 @@ function toggleSortDirection() {
   font-size: 11px;
 }
 
-.navigator-layout-sort-controls__row {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 6px;
-}
-
 .navigator-layout-sort-controls__select.sigma-ui-select-trigger {
   height: 28px;
-  flex: 1;
   font-size: 12px;
-}
-
-.navigator-layout-sort-controls__direction {
-  display: flex;
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: hsl(var(--foreground));
-  cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.navigator-layout-sort-controls__direction:hover {
-  background-color: hsl(var(--secondary));
-}
-
-.navigator-layout-sort-controls__direction:focus-visible {
-  outline: 2px solid hsl(var(--ring) / 50%);
-  outline-offset: var(--ring-outline-offset);
 }
 </style>

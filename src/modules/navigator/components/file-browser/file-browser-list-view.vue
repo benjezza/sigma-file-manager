@@ -38,6 +38,7 @@ import {
   formatAbsoluteDateDisplay,
   formatRelativeDateDisplay,
 } from '@/utils/relative-date-display';
+import type { FileBrowserListGroupVirtualRow } from './composables/use-file-browser-virtual-layout';
 
 interface FileBrowserListDateDisplay {
   primary: string;
@@ -82,6 +83,8 @@ interface FileBrowserListDisplayRow extends FileBrowserListVirtualRow {
   linkTargetKindLabel: string;
   memoKey: string;
 }
+
+type FileBrowserListVisibleRow = FileBrowserListDisplayRow | FileBrowserListGroupVirtualRow;
 
 const emptyDateDisplay: FileBrowserListDateDisplay = {
   primary: '',
@@ -408,10 +411,18 @@ function createDisplayRow(row: FileBrowserListVirtualRow): FileBrowserListDispla
   };
 }
 
-const visibleRows = computed<FileBrowserListDisplayRow[]>(() => {
+const visibleRows = computed<FileBrowserListVisibleRow[]>(() => {
   return ctx.visibleVirtualRows.value
-    .filter((row): row is FileBrowserListVirtualRow => row.type === 'list-entry')
-    .map(createDisplayRow);
+    .filter((row): row is FileBrowserListVirtualRow | FileBrowserListGroupVirtualRow => {
+      return row.type === 'list-entry' || row.type === 'list-group';
+    })
+    .map((row) => {
+      if (row.type === 'list-group') {
+        return row;
+      }
+
+      return createDisplayRow(row);
+    });
 });
 </script>
 
@@ -443,29 +454,38 @@ const visibleRows = computed<FileBrowserListDisplayRow[]>(() => {
         <div
           v-for="row in visibleRows"
           :key="row.key"
-          v-memo="[row.memoKey]"
-          role="button"
-          tabindex="0"
-          class="file-browser-list-view__entry"
-          :class="{
-            'file-browser-list-view__entry--dir': row.entry.is_dir,
-            'file-browser-list-view__entry--file': row.entry.is_file,
-            'file-browser-list-view__entry--hidden': row.entry.is_hidden,
-          }"
-          :style="row.entryStyle"
-          :data-entry-path="row.entry.path"
-          :data-selected="row.isSelected || undefined"
-          :data-in-clipboard="row.isInClipboard || undefined"
-          :data-clipboard-type="row.clipboardType"
-          :data-link-status="row.entry.link_status || undefined"
-          :data-drop-target="row.entry.is_dir || undefined"
-          @mousedown="ctx.onEntryMouseDown(row.entry, $event)"
-          @mouseup="ctx.onEntryMouseUp(row.entry, $event)"
-          @focus="ctx.handleEntryFocus(row.entry, $event)"
-          @contextmenu="ctx.handleEntryContextMenu(row.entry)"
-          @keydown="handleEntryKeydown($event, row.entry)"
+          v-memo="[row.type === 'list-entry' ? row.memoKey : `${row.groupId}:${row.count}`]"
+          :role="row.type === 'list-entry' ? 'button' : undefined"
+          :tabindex="row.type === 'list-entry' ? 0 : undefined"
+          :class="[
+            row.type === 'list-entry' ? 'file-browser-list-view__entry' : 'file-browser-list-view__group',
+            {
+              'file-browser-list-view__entry--dir': row.type === 'list-entry' && row.entry.is_dir,
+              'file-browser-list-view__entry--file': row.type === 'list-entry' && row.entry.is_file,
+              'file-browser-list-view__entry--hidden': row.type === 'list-entry' && row.entry.is_hidden,
+            },
+          ]"
+          :style="row.type === 'list-entry' ? row.entryStyle : { height: `${row.size}px` }"
+          :data-entry-path="row.type === 'list-entry' ? row.entry.path : undefined"
+          :data-selected="row.type === 'list-entry' ? row.isSelected || undefined : undefined"
+          :data-in-clipboard="row.type === 'list-entry' ? row.isInClipboard || undefined : undefined"
+          :data-clipboard-type="row.type === 'list-entry' ? row.clipboardType : undefined"
+          :data-link-status="row.type === 'list-entry' ? row.entry.link_status || undefined : undefined"
+          :data-drop-target="row.type === 'list-entry' ? row.entry.is_dir || undefined : undefined"
+          @mousedown="row.type === 'list-entry' ? ctx.onEntryMouseDown(row.entry, $event) : undefined"
+          @mouseup="row.type === 'list-entry' ? ctx.onEntryMouseUp(row.entry, $event) : undefined"
+          @focus="row.type === 'list-entry' ? ctx.handleEntryFocus(row.entry, $event) : undefined"
+          @contextmenu="row.type === 'list-entry' ? ctx.handleEntryContextMenu(row.entry) : undefined"
+          @keydown="row.type === 'list-entry' ? handleEntryKeydown($event, row.entry) : undefined"
         >
-          <div class="file-browser-list-view__entry-name">
+          <template v-if="row.type === 'list-group'">
+            <span class="file-browser-list-view__group-label">{{ row.groupLabel }}</span>
+            <span class="file-browser-list-view__group-count">{{ row.count }}</span>
+          </template>
+          <div
+            v-else
+            class="file-browser-list-view__entry-name"
+          >
             <FileBrowserEntryIcon
               :entry="row.entry"
               :size="18"
@@ -500,19 +520,21 @@ const visibleRows = computed<FileBrowserListDisplayRow[]>(() => {
               >{{ row.entryDescription }}</span>
             </div>
           </div>
-          <FileBrowserListViewColumnCell
-            v-for="column in visibleOptionalListColumns"
-            :key="column.id"
-            :column-id="getOptionalColumnId(column)"
-            :row="row"
-            :available-tags="availableTags"
-            @toggle-tag="handleToggleEntryTag"
-            @create-tag="handleCreateEntryTag"
-            @rename-tag="renameTag"
-            @update-tag-color="updateTagColor"
-            @tags-open-change="handleEntryTagsOpenChange"
-            @open-tag-selector="openEntryTagSelector"
-          />
+          <template v-if="row.type === 'list-entry'">
+            <FileBrowserListViewColumnCell
+              v-for="column in visibleOptionalListColumns"
+              :key="column.id"
+              :column-id="getOptionalColumnId(column)"
+              :row="row"
+              :available-tags="availableTags"
+              @toggle-tag="handleToggleEntryTag"
+              @create-tag="handleCreateEntryTag"
+              @rename-tag="renameTag"
+              @update-tag-color="updateTagColor"
+              @tags-open-change="handleEntryTagsOpenChange"
+              @open-tag-selector="openEntryTagSelector"
+            />
+          </template>
         </div>
       </div>
     </div>
@@ -580,6 +602,30 @@ const visibleRows = computed<FileBrowserListDisplayRow[]>(() => {
   scroll-margin-top: var(--file-browser-list-header-height);
   text-align: start;
   user-select: none;
+}
+
+.file-browser-list-view__group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 10px;
+  border-bottom: 1px solid hsl(var(--border) / 0.45);
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.file-browser-list-view__group-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-browser-list-view__group-count {
+  opacity: 0.75;
 }
 
 .file-browser-list-view__entry:focus-visible {

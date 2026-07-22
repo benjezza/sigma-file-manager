@@ -12,17 +12,19 @@ import {
   type ComputedRef,
 } from 'vue';
 import type { DirEntry } from '@/types/dir-entry';
+import type { ListGroupBy, ListSortDirection } from '@/types/user-settings';
 import normalizePath from '@/utils/normalize-path';
 import { computeVerticalVirtualRange } from '@/composables/use-vertical-virtual-list';
 import { groupFileBrowserEntries } from '../file-browser-entry-groups';
 import { getFileBrowserGridGap } from '../utils/file-browser-layout-gaps';
 import { getElementContentBoxWidth } from '../utils/file-browser-content-box';
+import { i18n } from '@/localization';
 import {
   getGridColumnCount,
   type FileBrowserGridEntryVariant,
   type FileBrowserGridItemsVirtualRow,
-  type FileBrowserGridSectionKey,
   type FileBrowserGridSectionVirtualRow,
+  type FileBrowserListGroupVirtualRow,
   type FileBrowserListVirtualRow,
   type FileBrowserVirtualRow,
 } from '../utils/file-browser-virtual-rows';
@@ -30,8 +32,8 @@ import {
 export type {
   FileBrowserGridEntryVariant,
   FileBrowserGridItemsVirtualRow,
-  FileBrowserGridSectionKey,
   FileBrowserGridSectionVirtualRow,
+  FileBrowserListGroupVirtualRow,
   FileBrowserListVirtualRow,
   FileBrowserVirtualRow,
 } from '../utils/file-browser-virtual-rows';
@@ -39,6 +41,7 @@ export { getGridColumnCount } from '../utils/file-browser-virtual-rows';
 
 const LIST_ENTRY_HEIGHT = 42;
 const LIST_ENTRY_WITH_DESCRIPTION_HEIGHT = 56;
+const LIST_GROUP_HEADER_HEIGHT = 34;
 const GRID_SECTION_HEADER_HEIGHT = 42;
 const GRID_DIR_ENTRY_HEIGHT = 52;
 const GRID_ENTRY_HEIGHT = 120;
@@ -53,11 +56,124 @@ const STATUS_BAR_SELECTOR = '.file-browser-status-bar';
 const VIRTUAL_SPACER_SELECTOR = '.file-browser-list-view__list, .file-browser-grid-view__spacer';
 
 interface GridSectionDefinition {
-  key: FileBrowserGridSectionKey;
+  id: string;
+  label: string;
   variant: FileBrowserGridEntryVariant;
   entries: DirEntry[];
   stickyIndex: number;
   entryHeight: number;
+}
+
+type EntryGroup = {
+  id: string;
+  label: string;
+  variant: FileBrowserGridEntryVariant;
+  entries: DirEntry[];
+};
+
+type ModifiedGroupBucketKey = 'today' | 'yesterday' | 'earlierThisWeek' | 'lastWeek' | 'lastMonth' | 'earlierThisYear' | 'older';
+
+const DATE_GROUP_ORDER: readonly ModifiedGroupBucketKey[] = [
+  'today',
+  'yesterday',
+  'earlierThisWeek',
+  'lastWeek',
+  'lastMonth',
+  'earlierThisYear',
+  'older',
+];
+
+const NAME_COLLATOR = new Intl.Collator(undefined, {
+  sensitivity: 'base',
+  numeric: true,
+});
+
+function getGridEntryVariant(entry: DirEntry): FileBrowserGridEntryVariant {
+  if (entry.is_dir) {
+    return 'dir';
+  }
+
+  if (entry.mime?.startsWith('image/')) {
+    return 'image';
+  }
+
+  if (entry.mime?.startsWith('video/')) {
+    return 'video';
+  }
+
+  return 'other';
+}
+
+function getModifiedGroupBucket(timestamp: number, nowMs: number): ModifiedGroupBucketKey {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) {
+    return 'older';
+  }
+
+  const now = new Date(nowMs);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+  if (timestamp >= todayStart) {
+    return 'today';
+  }
+
+  const yesterdayStart = todayStart - (24 * 60 * 60 * 1000);
+
+  if (timestamp >= yesterdayStart) {
+    return 'yesterday';
+  }
+
+  const thisWeekStart = new Date(now);
+  const weekday = (thisWeekStart.getDay() + 6) % 7;
+  thisWeekStart.setHours(0, 0, 0, 0);
+  thisWeekStart.setDate(thisWeekStart.getDate() - weekday);
+  const thisWeekStartMs = thisWeekStart.getTime();
+
+  if (timestamp >= thisWeekStartMs) {
+    return 'earlierThisWeek';
+  }
+
+  const lastWeekStartMs = thisWeekStartMs - (7 * 24 * 60 * 60 * 1000);
+
+  if (timestamp >= lastWeekStartMs) {
+    return 'lastWeek';
+  }
+
+  const thisMonthStartMs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+  if (timestamp >= thisMonthStartMs) {
+    return 'lastMonth';
+  }
+
+  const thisYearStartMs = new Date(now.getFullYear(), 0, 1).getTime();
+
+  if (timestamp >= thisYearStartMs) {
+    return 'earlierThisYear';
+  }
+
+  return 'older';
+}
+
+function getModifiedGroupLabel(bucket: ModifiedGroupBucketKey): string {
+  switch (bucket) {
+    case 'today':
+      return 'Today';
+    case 'yesterday':
+      return 'Yesterday';
+    case 'earlierThisWeek':
+      return 'Earlier this week';
+    case 'lastWeek':
+      return 'Last week';
+    case 'lastMonth':
+      return 'Last month';
+    case 'earlierThisYear':
+      return 'Earlier this year';
+    default:
+      return 'Older';
+  }
+}
+
+function translate(key: string): string {
+  return i18n.global.t(key);
 }
 
 function resolveScrollViewportElement(element: HTMLElement): HTMLElement {
@@ -93,7 +209,7 @@ function getRowScrollMarginTop(
   virtualContentOffset: number,
   gridGap: number,
 ): number {
-  if (row.type === 'list-entry') {
+  if (row.type === 'list-entry' || row.type === 'list-group') {
     return virtualContentOffset;
   }
 
@@ -149,26 +265,167 @@ export function resolveViewportContentWidth(viewport: HTMLElement): number {
   return getElementContentBoxWidth(viewport);
 }
 
+function buildGroups(
+  entries: readonly DirEntry[],
+  groupBy: ListGroupBy,
+  sortDirection: ListSortDirection,
+): EntryGroup[] {
+  if (groupBy === 'kind') {
+    const grouped = groupFileBrowserEntries(entries);
+    const kindGroups: EntryGroup[] = [
+      {
+        id: 'kind:folders',
+        label: translate('fileBrowser.folders'),
+        variant: 'dir',
+        entries: grouped.dirs,
+      },
+      {
+        id: 'kind:images',
+        label: translate('fileBrowser.images'),
+        variant: 'image',
+        entries: grouped.images,
+      },
+      {
+        id: 'kind:videos',
+        label: translate('fileBrowser.videos'),
+        variant: 'video',
+        entries: grouped.videos,
+      },
+      {
+        id: 'kind:otherFiles',
+        label: translate('fileBrowser.otherFiles'),
+        variant: 'other',
+        entries: grouped.others,
+      },
+    ];
+
+    return kindGroups.filter(group => group.entries.length > 0);
+  }
+
+  if (groupBy === 'name') {
+    const groupsById = new Map<string, EntryGroup>();
+
+    for (const entry of entries) {
+      const normalizedName = entry.name.trim();
+      const firstCharacter = normalizedName.length > 0 ? normalizedName[0].toUpperCase() : '#';
+      const groupLabel = /^[A-Z0-9]$/.test(firstCharacter) ? firstCharacter : '#';
+      const groupId = `name:${groupLabel}`;
+      const groupVariant = getGridEntryVariant(entry);
+      const existingGroup = groupsById.get(groupId);
+
+      if (existingGroup) {
+        existingGroup.entries.push(entry);
+        if (existingGroup.variant !== 'dir' && groupVariant === 'dir') {
+          existingGroup.variant = 'dir';
+        }
+        continue;
+      }
+
+      groupsById.set(groupId, {
+        id: groupId,
+        label: groupLabel,
+        variant: groupVariant === 'dir' ? 'dir' : 'other',
+        entries: [entry],
+      });
+    }
+
+    const sortedGroups = [...groupsById.values()].sort((left, right) => NAME_COLLATOR.compare(left.label, right.label));
+    return sortDirection === 'desc' ? sortedGroups.reverse() : sortedGroups;
+  }
+
+  if (groupBy === 'modified') {
+    const groupsByBucket = new Map<ModifiedGroupBucketKey, EntryGroup>();
+    const nowMs = Date.now();
+
+    for (const entry of entries) {
+      const bucket = getModifiedGroupBucket(entry.modified_time, nowMs);
+      const groupVariant = getGridEntryVariant(entry);
+      const existingGroup = groupsByBucket.get(bucket);
+
+      if (existingGroup) {
+        existingGroup.entries.push(entry);
+        if (existingGroup.variant !== 'dir' && groupVariant === 'dir') {
+          existingGroup.variant = 'dir';
+        }
+        continue;
+      }
+
+      groupsByBucket.set(bucket, {
+        id: `modified:${bucket}`,
+        label: getModifiedGroupLabel(bucket),
+        variant: groupVariant === 'dir' ? 'dir' : 'other',
+        entries: [entry],
+      });
+    }
+
+    return DATE_GROUP_ORDER
+      .map(bucket => groupsByBucket.get(bucket))
+      .filter((group): group is EntryGroup => !!group && group.entries.length > 0);
+  }
+
+  return [];
+}
+
 function createListRows(
   entries: readonly DirEntry[],
+  groupBy: ListGroupBy,
+  sortDirection: ListSortDirection,
   entryDescription?: (entry: DirEntry) => string | undefined,
 ): FileBrowserVirtualRow[] {
   let offset = 0;
+  const rows: FileBrowserVirtualRow[] = [];
+  const groups = groupBy === 'none'
+    ? []
+    : buildGroups(entries, groupBy, sortDirection);
 
-  return entries.map((entry, entryIndex) => {
-    const size = getEntryDescriptionHeight(entry, entryDescription);
-    const row: FileBrowserListVirtualRow = {
-      type: 'list-entry',
-      key: `list:${entry.path}`,
-      entry,
-      entryIndex,
+  if (groups.length === 0) {
+    return entries.map((entry, entryIndex) => {
+      const size = getEntryDescriptionHeight(entry, entryDescription);
+      const row: FileBrowserListVirtualRow = {
+        type: 'list-entry',
+        key: `list:${entry.path}`,
+        entry,
+        entryIndex,
+        start: offset,
+        size,
+      };
+
+      offset += size;
+      return row;
+    });
+  }
+
+  let entryIndex = 0;
+
+  for (const group of groups) {
+    const groupRow: FileBrowserListGroupVirtualRow = {
+      type: 'list-group',
+      key: `list-group:${group.id}`,
+      groupId: group.id,
+      groupLabel: group.label,
+      count: group.entries.length,
       start: offset,
-      size,
+      size: LIST_GROUP_HEADER_HEIGHT,
     };
+    rows.push(groupRow);
+    offset += LIST_GROUP_HEADER_HEIGHT;
 
-    offset += size;
-    return row;
-  });
+    for (const entry of group.entries) {
+      const size = getEntryDescriptionHeight(entry, entryDescription);
+      rows.push({
+        type: 'list-entry',
+        key: `list:${entry.path}`,
+        entry,
+        entryIndex,
+        start: offset,
+        size,
+      });
+      offset += size;
+      entryIndex += 1;
+    }
+  }
+
+  return rows;
 }
 
 function createGridSectionRows(
@@ -190,8 +447,10 @@ function createGridSectionRows(
   const rows: FileBrowserVirtualRow[] = [
     {
       type: 'grid-section',
-      key: `grid-section:${section.key}`,
-      sectionKey: section.key,
+      key: `grid-section:${section.id}`,
+      sectionId: section.id,
+      sectionKey: section.id,
+      label: section.label,
       variant: section.variant,
       count: section.entries.length,
       stickyIndex: section.stickyIndex,
@@ -207,8 +466,9 @@ function createGridSectionRows(
 
     rows.push({
       type: 'grid-items',
-      key: `grid-items:${section.key}:${rowIndex}:${rowEntries.map(entry => entry.path).join('|')}`,
-      sectionKey: section.key,
+      key: `grid-items:${section.id}:${rowIndex}:${rowEntries.map(entry => entry.path).join('|')}`,
+      sectionId: section.id,
+      sectionKey: section.id,
       variant: section.variant,
       entries: rowEntries,
       rowIndex,
@@ -227,40 +487,51 @@ function createGridSectionRows(
 
 function createGridRows(
   entries: readonly DirEntry[],
+  groupBy: ListGroupBy,
+  sortDirection: ListSortDirection,
   columnCount: number,
   gridGap: number,
 ): FileBrowserVirtualRow[] {
-  const groupedEntries = groupFileBrowserEntries(entries);
-  const sections: GridSectionDefinition[] = [
-    {
-      key: 'dirs',
-      variant: 'dir',
-      entries: groupedEntries.dirs,
-      stickyIndex: 10,
-      entryHeight: GRID_DIR_ENTRY_HEIGHT,
-    },
-    {
-      key: 'images',
-      variant: 'image',
-      entries: groupedEntries.images,
-      stickyIndex: 11,
-      entryHeight: GRID_ENTRY_HEIGHT,
-    },
-    {
-      key: 'videos',
-      variant: 'video',
-      entries: groupedEntries.videos,
-      stickyIndex: 12,
-      entryHeight: GRID_ENTRY_HEIGHT,
-    },
-    {
-      key: 'others',
-      variant: 'other',
-      entries: groupedEntries.others,
-      stickyIndex: 13,
-      entryHeight: GRID_ENTRY_HEIGHT,
-    },
-  ];
+  const defaultGroups: EntryGroup[] = (() => {
+    const groupedEntries = groupFileBrowserEntries(entries);
+
+    return [
+      {
+        id: 'kind:folders',
+        label: translate('fileBrowser.folders'),
+        variant: 'dir',
+        entries: groupedEntries.dirs,
+      },
+      {
+        id: 'kind:images',
+        label: translate('fileBrowser.images'),
+        variant: 'image',
+        entries: groupedEntries.images,
+      },
+      {
+        id: 'kind:videos',
+        label: translate('fileBrowser.videos'),
+        variant: 'video',
+        entries: groupedEntries.videos,
+      },
+      {
+        id: 'kind:otherFiles',
+        label: translate('fileBrowser.otherFiles'),
+        variant: 'other',
+        entries: groupedEntries.others,
+      },
+    ];
+  })();
+
+  const groups = groupBy === 'none' ? defaultGroups : buildGroups(entries, groupBy, sortDirection);
+  const sections: GridSectionDefinition[] = groups.map((group, index) => ({
+    id: group.id,
+    label: group.label,
+    variant: group.variant,
+    entries: group.entries,
+    stickyIndex: 10 + index,
+    entryHeight: group.variant === 'dir' ? GRID_DIR_ENTRY_HEIGHT : GRID_ENTRY_HEIGHT,
+  }));
 
   let offset = 0;
   const rows: FileBrowserVirtualRow[] = [];
@@ -277,20 +548,32 @@ function createGridRows(
 export function createFileBrowserVirtualRows(options: {
   entries: readonly DirEntry[];
   layout: 'list' | 'grid' | undefined;
+  groupBy?: ListGroupBy;
+  sortDirection?: ListSortDirection;
   viewportWidth: number;
   entryDescription?: (entry: DirEntry) => string | undefined;
   increaseFileViewGaps?: boolean;
 }): FileBrowserVirtualRow[] {
+  const groupBy = options.groupBy ?? 'none';
+  const sortDirection = options.sortDirection ?? 'asc';
+
   if (options.layout === 'grid') {
     const gridGap = getFileBrowserGridGap(!!options.increaseFileViewGaps);
     return createGridRows(
       options.entries,
+      groupBy,
+      sortDirection,
       getGridColumnCount(options.viewportWidth, gridGap),
       gridGap,
     );
   }
 
-  return createListRows(options.entries, options.entryDescription);
+  return createListRows(
+    options.entries,
+    groupBy,
+    sortDirection,
+    options.entryDescription,
+  );
 }
 
 export function getFileBrowserGridNavigationEntry(
@@ -322,6 +605,8 @@ export function getFileBrowserGridNavigationEntry(
 export function useFileBrowserVirtualLayout(options: {
   entries: ComputedRef<DirEntry[]>;
   layout: () => 'list' | 'grid' | undefined;
+  groupBy?: () => ListGroupBy;
+  sortDirection?: () => ListSortDirection;
   entryDescription?: (entry: DirEntry) => string | undefined;
   increaseFileViewGaps?: () => boolean;
 }) {
@@ -340,6 +625,8 @@ export function useFileBrowserVirtualLayout(options: {
     return createFileBrowserVirtualRows({
       entries: options.entries.value,
       layout: options.layout(),
+      groupBy: options.groupBy?.() ?? 'none',
+      sortDirection: options.sortDirection?.() ?? 'asc',
       viewportWidth: viewportWidth.value,
       entryDescription: options.entryDescription,
       increaseFileViewGaps: options.increaseFileViewGaps?.(),

@@ -171,8 +171,8 @@ export function useFileBrowserNavigation(
     includeItemCounts: false,
   };
 
-  function createReadDirOptions(): ReadDirOptions {
-    return getFileBrowserSortReadDirOptions(userSettingsStore.userSettings.navigator, layout());
+  function createReadDirOptions(path = currentPath.value): ReadDirOptions {
+    return getFileBrowserSortReadDirOptions(userSettingsStore.userSettings.navigator, layout(), path);
   }
 
   function getReadDirOptionsSignature(options: ReadDirOptions): string {

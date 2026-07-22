@@ -223,4 +223,18 @@ describe('migrateUserSettingsStorage', () => {
     expect(storage.values.get(USER_SETTINGS_SCHEMA_VERSION_KEY)).toBe(USER_SETTINGS_SCHEMA_VERSION);
     expect(storage.save).toHaveBeenCalledOnce();
   });
+
+  it('defaults navigator group-by and path preferences when migrating from schema version 24', async () => {
+    const storage = createStorageAdapter({
+      [USER_SETTINGS_SCHEMA_VERSION_KEY]: 24,
+    });
+
+    await migrateUserSettingsStorage(storage);
+
+    expect(storage.values.get('navigator.pathViewPreferences')).toEqual({});
+    expect(storage.values.get('navigator.listGroupBy')).toBe('none');
+    expect(storage.values.get('navigator.gridGroupBy')).toBe('kind');
+    expect(storage.values.get(USER_SETTINGS_SCHEMA_VERSION_KEY)).toBe(USER_SETTINGS_SCHEMA_VERSION);
+    expect(storage.save).toHaveBeenCalledOnce();
+  });
 });
